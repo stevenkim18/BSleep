@@ -6,13 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C0FC9B2E2F1A2EB6002F94CB /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = C0FC9B2D2F1A2EB6002F94CB /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		C0FC9B1E2F1A29BD002F94CB /* AsleepSubject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AsleepSubject.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C0FC9B312F1A4AAC002F94CB /* Exceptions for "AsleepSubject" folder in "AsleepSubject" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C0FC9B1D2F1A29BD002F94CB /* AsleepSubject */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C0FC9B202F1A29BD002F94CB /* AsleepSubject */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FC9B312F1A4AAC002F94CB /* Exceptions for "AsleepSubject" folder in "AsleepSubject" target */,
+			);
 			path = AsleepSubject;
 			sourceTree = "<group>";
 		};
@@ -23,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0FC9B2E2F1A2EB6002F94CB /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +83,7 @@
 			);
 			name = AsleepSubject;
 			packageProductDependencies = (
+				C0FC9B2D2F1A2EB6002F94CB /* ComposableArchitecture */,
 			);
 			productName = AsleepSubject;
 			productReference = C0FC9B1E2F1A29BD002F94CB /* AsleepSubject.app */;
@@ -94,6 +113,9 @@
 			);
 			mainGroup = C0FC9B152F1A29BD002F94CB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C0FC9B2C2F1A2EB6002F94CB /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C0FC9B1F2F1A29BD002F94CB /* Products */;
 			projectDirPath = "";
@@ -256,6 +278,8 @@
 				DEVELOPMENT_TEAM = U77SWC9NZT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AsleepSubject/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "녹음 기능을 사용하기 위해 마이크 접근이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -288,6 +312,8 @@
 				DEVELOPMENT_TEAM = U77SWC9NZT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AsleepSubject/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "녹음 기능을 사용하기 위해 마이크 접근이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -332,6 +358,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C0FC9B2C2F1A2EB6002F94CB /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.23.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C0FC9B2D2F1A2EB6002F94CB /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C0FC9B2C2F1A2EB6002F94CB /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C0FC9B162F1A29BD002F94CB /* Project object */;
 }
