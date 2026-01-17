@@ -8,6 +8,13 @@
 import ComposableArchitecture
 import Foundation
 
+// MARK: - Cancel ID
+
+private enum RecordingCancelID: Hashable, Sendable {
+    case playback
+    case stateUpdates
+}
+
 @Reducer
 struct RecordingFeature {
     
@@ -16,8 +23,12 @@ struct RecordingFeature {
         // 녹음 상태
         var isRecording = false
         var isPlaying = false
+        var isPaused = false
         var permissionGranted: Bool?
         var errorMessage: String?
+        
+        // 재생 상태
+        var playbackState: PlaybackState?
         
         // 녹음 목록
         var recordings: [RecordingEntity] = []
@@ -37,7 +48,11 @@ struct RecordingFeature {
         
         // 재생
         case playRecording(RecordingEntity)
-        case stopPlayback
+        case pauseTapped
+        case resumeTapped
+        case stopTapped
+        case seekTo(TimeInterval)
+        case playbackStateUpdated(PlaybackState)
         case playbackFinished
         
         // 녹음 목록
@@ -48,7 +63,8 @@ struct RecordingFeature {
         case errorOccurred(String)
     }
     
-    @Dependency(\.audioClient) var audioClient
+    @Dependency(\.recorderClient) var recorderClient
+    @Dependency(\.playerClient) var playerClient
     @Dependency(\.recordingStorageClient) var storageClient
     
     var body: some Reducer<State, Action> {
@@ -56,7 +72,7 @@ struct RecordingFeature {
             switch action {
             case .onAppear:
                 return .run { send in
-                    let granted = await audioClient.requestPermission()
+                    let granted = await recorderClient.requestPermission()
                     await send(.permissionResponse(granted))
                     await send(.loadRecordings)
                 }
@@ -78,27 +94,30 @@ struct RecordingFeature {
                 
                 if state.isRecording {
                     return .run { send in
-                        let url = await audioClient.stopRecording()
+                        let url = await recorderClient.stopRecording()
                         await send(.recordingStopped(url))
                     }
                 } else {
                     // 재생 중이면 먼저 정지
                     let wasPlaying = state.isPlaying
                     state.isPlaying = false
+                    state.isPaused = false
                     state.currentlyPlayingID = nil
+                    state.playbackState = nil
                     
                     return .run { send in
                         if wasPlaying {
-                            await audioClient.stopPlayback()
+                            await playerClient.stop()
                         }
                         do {
                             let url = try await makeRecordingURL()
-                            try await audioClient.startRecording(to: url)
+                            try await recorderClient.startRecording(to: url)
                             await send(.recordingStarted)
                         } catch {
                             await send(.errorOccurred("녹음을 시작할 수 없습니다: \(error.localizedDescription)"))
                         }
                     }
+                    .cancellable(id: RecordingCancelID.playback, cancelInFlight: true)
                 }
                 
             case .recordingStarted:
@@ -116,46 +135,86 @@ struct RecordingFeature {
             case let .playRecording(recording):
                 // 이미 재생 중인 파일을 탭하면 정지
                 if state.currentlyPlayingID == recording.id {
-                    return .send(.stopPlayback)
+                    return .send(.stopTapped)
                 }
                 
                 // 다른 파일 재생 시작
                 state.isPlaying = true
+                state.isPaused = false
                 state.currentlyPlayingID = recording.id
                 
-                return .run { send in
-                    do {
-                        // 기존 재생 정지
-                        await audioClient.stopPlayback()
-                        try await audioClient.startPlayback(url: recording.url)
-                        
-                        // 재생 완료 감지
-                        for await event in audioClient.playbackEvents() {
-                            switch event {
-                            case .finished:
-                                await send(.playbackFinished)
-                                return // 스트림 종료
-                            case .interrupted:
-                                await send(.playbackFinished)
-                                return
+                return .merge(
+                    // 재생 시작 및 완료 감지
+                    .run { send in
+                        do {
+                            await playerClient.stop()
+                            try await playerClient.play(url: recording.url)
+                            
+                            for await event in playerClient.eventStream() {
+                                switch event {
+                                case .finished, .interrupted:
+                                    await send(.playbackFinished)
+                                    return
+                                }
                             }
+                        } catch {
+                            await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
                         }
-                    } catch {
-                        await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
                     }
+                    .cancellable(id: RecordingCancelID.playback, cancelInFlight: true),
+                    
+                    // 상태 업데이트 구독
+                    .run { send in
+                        for await playbackState in playerClient.stateStream() {
+                            await send(.playbackStateUpdated(playbackState))
+                        }
+                    }
+                    .cancellable(id: RecordingCancelID.stateUpdates, cancelInFlight: true)
+                )
+                
+            case .pauseTapped:
+                state.isPaused = true
+                return .run { _ in
+                    await playerClient.pause()
                 }
                 
-            case .stopPlayback:
-                state.isPlaying = false
-                state.currentlyPlayingID = nil
+            case .resumeTapped:
+                state.isPaused = false
                 return .run { _ in
-                    await audioClient.stopPlayback()
+                    await playerClient.resume()
                 }
+                
+            case .stopTapped:
+                state.isPlaying = false
+                state.isPaused = false
+                state.currentlyPlayingID = nil
+                state.playbackState = nil
+                return .merge(
+                    .cancel(id: RecordingCancelID.playback),
+                    .cancel(id: RecordingCancelID.stateUpdates),
+                    .run { _ in
+                        await playerClient.stop()
+                    }
+                )
+                
+            case let .seekTo(time):
+                return .run { _ in
+                    await playerClient.seek(to: time)
+                }
+                
+            case let .playbackStateUpdated(playbackState):
+                state.playbackState = playbackState
+                state.isPaused = !playbackState.isPlaying && state.isPlaying
+                return .none
                 
             case .playbackFinished:
                 state.isPlaying = false
+                state.isPaused = false
                 state.currentlyPlayingID = nil
-                return .none
+                state.playbackState = nil
+                return .merge(
+                    .cancel(id: RecordingCancelID.stateUpdates)
+                )
                 
             // MARK: - Recordings List
                 
@@ -181,7 +240,9 @@ struct RecordingFeature {
                 state.errorMessage = message
                 state.isRecording = false
                 state.isPlaying = false
+                state.isPaused = false
                 state.currentlyPlayingID = nil
+                state.playbackState = nil
                 state.isLoadingRecordings = false
                 return .none
             }

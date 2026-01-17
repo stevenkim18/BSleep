@@ -24,9 +24,26 @@ struct RecordingView: View {
             
             Divider()
             
-            // 하단: 녹음 목록
+            // 중앙: 녹음 목록
             recordingListView
+            
+            // 하단: 재생 컨트롤 (재생 중일 때만 표시)
+            if store.isPlaying || store.isPaused {
+                Divider()
+                
+                PlaybackControlView(
+                    playbackState: store.playbackState,
+                    isPaused: store.isPaused,
+                    onPause: { store.send(.pauseTapped) },
+                    onResume: { store.send(.resumeTapped) },
+                    onStop: { store.send(.stopTapped) },
+                    onSeek: { store.send(.seekTo($0)) }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: store.isPlaying)
+        .animation(.easeInOut(duration: 0.25), value: store.isPaused)
         .onAppear {
             store.send(.onAppear)
         }
@@ -37,6 +54,7 @@ struct RecordingView: View {
                     Spacer()
                     errorView(message: errorMessage)
                         .padding()
+                        .padding(.bottom, store.isPlaying ? 120 : 0)
                 }
             }
         }
@@ -52,11 +70,17 @@ struct RecordingView: View {
                     .frame(width: 16, height: 16)
                 Text("녹음 중...")
                     .font(.headline)
-            } else if store.isPlaying {
+            } else if store.isPlaying && !store.isPaused {
                 Image(systemName: "waveform")
                     .font(.largeTitle)
                     .foregroundStyle(.blue)
                 Text("재생 중...")
+                    .font(.headline)
+            } else if store.isPaused {
+                Image(systemName: "pause.circle")
+                    .font(.largeTitle)
+                    .foregroundStyle(.orange)
+                Text("일시정지")
                     .font(.headline)
             } else {
                 Image(systemName: "mic.circle")
@@ -69,6 +93,7 @@ struct RecordingView: View {
         }
         .animation(.default, value: store.isRecording)
         .animation(.default, value: store.isPlaying)
+        .animation(.default, value: store.isPaused)
     }
     
     // MARK: - Record Button
@@ -113,7 +138,7 @@ struct RecordingView: View {
                 List(store.recordings) { recording in
                     RecordingRow(
                         recording: recording,
-                        isPlaying: store.currentlyPlayingID == recording.id
+                        isPlaying: store.currentlyPlayingID == recording.id && !store.isPaused
                     ) {
                         store.send(.playRecording(recording))
                     }
