@@ -1,0 +1,86 @@
+//
+//  RecordingStorageClient.swift
+//  AsleepSubject
+//
+//  Created by seungwooKim on 1/17/26.
+//
+
+import AVFoundation
+import Dependencies
+import Foundation
+
+// MARK: - Protocol
+
+/// 녹음 파일 저장소 관리를 위한 프로토콜
+protocol RecordingStorageClientProtocol: Sendable {
+    /// 저장된 녹음 파일 목록 조회
+    func fetchRecordings() async throws -> [RecordingEntity]
+    
+    /// 녹음 파일 삭제
+    func deleteRecording(_ recording: RecordingEntity) async throws
+}
+
+// MARK: - Live Implementation
+
+/// RecordingStorageClientProtocol의 실제 구현체
+actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
+    
+    private let fileManager = FileManager.default
+    
+    func fetchRecordings() async throws -> [RecordingEntity] {
+        guard let documentsURL = fileManager
+            .urls(for: .documentDirectory, in: .userDomainMask)
+            .first else {
+            return []
+        }
+        
+        let files = try fileManager
+            .contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: [.creationDateKey])
+            .filter { $0.pathExtension == "m4a" }
+        
+        return files.compactMap { url -> RecordingEntity? in
+            guard let attrs = try? fileManager.attributesOfItem(atPath: url.path),
+                  let createdAt = attrs[.creationDate] as? Date else {
+                return nil
+            }
+            
+            let duration = getDuration(of: url)
+            
+            return RecordingEntity(
+                id: UUID(),
+                url: url,
+                createdAt: createdAt,
+                duration: duration
+            )
+        }
+        .sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    func deleteRecording(_ recording: RecordingEntity) async throws {
+        try fileManager.removeItem(at: recording.url)
+    }
+    
+    // MARK: - Private
+    
+    private func getDuration(of url: URL) -> TimeInterval {
+        guard let player = try? AVAudioPlayer(contentsOf: url) else {
+            return 0
+        }
+        return player.duration
+    }
+}
+
+// MARK: - Dependency Key
+
+private enum RecordingStorageClientKey: DependencyKey {
+    static let liveValue: any RecordingStorageClientProtocol = LiveRecordingStorageClient()
+}
+
+// MARK: - Dependency Values
+
+extension DependencyValues {
+    var recordingStorageClient: any RecordingStorageClientProtocol {
+        get { self[RecordingStorageClientKey.self] }
+        set { self[RecordingStorageClientKey.self] = newValue }
+    }
+}

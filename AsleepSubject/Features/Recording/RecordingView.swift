@@ -12,32 +12,37 @@ struct RecordingView: View {
     @Bindable var store: StoreOf<RecordingFeature>
     
     var body: some View {
-        VStack(spacing: 40) {
-            Spacer()
-            
-            // 상태 표시
-            statusView
-            
-            // 녹음 버튼
-            recordButton
-            
-            // 재생 버튼
-            playButton
-            
-            Spacer()
-            
-            // 에러 메시지
-            if let errorMessage = store.errorMessage {
-                errorView(message: errorMessage)
+        VStack(spacing: 0) {
+            // 상단: 녹음 컨트롤
+            VStack(spacing: 24) {
+                statusView
+                recordButton
             }
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity)
+            .background(Color(.systemGroupedBackground))
+            
+            Divider()
+            
+            // 하단: 녹음 목록
+            recordingListView
         }
-        .padding()
         .onAppear {
             store.send(.onAppear)
         }
+        .overlay {
+            // 에러 메시지
+            if let errorMessage = store.errorMessage {
+                VStack {
+                    Spacer()
+                    errorView(message: errorMessage)
+                        .padding()
+                }
+            }
+        }
     }
     
-    // MARK: - Subviews
+    // MARK: - Status View
     
     private var statusView: some View {
         VStack(spacing: 8) {
@@ -53,15 +58,9 @@ struct RecordingView: View {
                     .foregroundStyle(.blue)
                 Text("재생 중...")
                     .font(.headline)
-            } else if store.recordingURL != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.green)
-                Text("녹음 완료")
-                    .font(.headline)
             } else {
                 Image(systemName: "mic.circle")
-                    .font(.system(size: 60))
+                    .font(.system(size: 48))
                     .foregroundStyle(.secondary)
                 Text("녹음을 시작하세요")
                     .font(.headline)
@@ -72,6 +71,8 @@ struct RecordingView: View {
         .animation(.default, value: store.isPlaying)
     }
     
+    // MARK: - Record Button
+    
     private var recordButton: some View {
         Button {
             store.send(.recordButtonTapped)
@@ -79,41 +80,56 @@ struct RecordingView: View {
             ZStack {
                 Circle()
                     .fill(store.isRecording ? .red : .gray.opacity(0.2))
-                    .frame(width: 80, height: 80)
+                    .frame(width: 72, height: 72)
                 
                 if store.isRecording {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(.white)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 24, height: 24)
                 } else {
                     Circle()
                         .fill(.red)
-                        .frame(width: 60, height: 60)
+                        .frame(width: 56, height: 56)
                 }
             }
         }
         .disabled(store.permissionGranted == false)
     }
     
-    private var playButton: some View {
-        Button {
-            store.send(.playButtonTapped)
-        } label: {
-            Image(systemName: store.isPlaying ? "stop.fill" : "play.fill")
-                .font(.title)
-                .foregroundStyle(.white)
-                .frame(width: 60, height: 60)
-                .background(store.recordingURL != nil ? .blue : .gray)
-                .clipShape(Circle())
+    // MARK: - Recording List
+    
+    private var recordingListView: some View {
+        Group {
+            if store.isLoadingRecordings {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if store.recordings.isEmpty {
+                ContentUnavailableView(
+                    "녹음 파일 없음",
+                    systemImage: "waveform",
+                    description: Text("녹음 버튼을 눌러 첫 녹음을 시작하세요")
+                )
+            } else {
+                List(store.recordings) { recording in
+                    RecordingRow(
+                        recording: recording,
+                        isPlaying: store.currentlyPlayingID == recording.id
+                    ) {
+                        store.send(.playRecording(recording))
+                    }
+                }
+                .listStyle(.plain)
+            }
         }
-        .disabled(store.recordingURL == nil)
     }
+    
+    // MARK: - Error View
     
     private func errorView(message: String) -> some View {
         VStack(spacing: 12) {
             Text(message)
                 .font(.callout)
-                .foregroundStyle(.red)
+                .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
             
             if store.permissionGranted == false {
@@ -123,10 +139,11 @@ struct RecordingView: View {
                     }
                 }
                 .font(.callout.bold())
+                .foregroundStyle(.white)
             }
         }
         .padding()
-        .background(.red.opacity(0.1))
+        .background(.red.opacity(0.9))
         .cornerRadius(12)
     }
 }

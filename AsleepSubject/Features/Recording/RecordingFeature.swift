@@ -13,25 +13,43 @@ struct RecordingFeature {
     
     @ObservableState
     struct State: Equatable {
+        // 녹음 상태
         var isRecording = false
         var isPlaying = false
-        var recordingURL: URL?
         var permissionGranted: Bool?
         var errorMessage: String?
+        
+        // 녹음 목록
+        var recordings: [RecordingEntity] = []
+        var currentlyPlayingID: UUID?
+        var isLoadingRecordings = false
     }
     
     enum Action {
+        // 라이프사이클
         case onAppear
         case permissionResponse(Bool)
+        
+        // 녹음
         case recordButtonTapped
         case recordingStarted
         case recordingStopped(URL?)
-        case playButtonTapped
+        
+        // 재생
+        case playRecording(RecordingEntity)
+        case stopPlayback
         case playbackFinished
+        
+        // 녹음 목록
+        case loadRecordings
+        case recordingsLoaded([RecordingEntity])
+        
+        // 에러
         case errorOccurred(String)
     }
     
     @Dependency(\.audioClient) var audioClient
+    @Dependency(\.recordingStorageClient) var storageClient
     
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -40,6 +58,7 @@ struct RecordingFeature {
                 return .run { send in
                     let granted = await audioClient.requestPermission()
                     await send(.permissionResponse(granted))
+                    await send(.loadRecordings)
                 }
                 
             case let .permissionResponse(granted):
@@ -49,21 +68,29 @@ struct RecordingFeature {
                 }
                 return .none
                 
+            // MARK: - Recording
+                
             case .recordButtonTapped:
-                // 권한 확인
                 guard state.permissionGranted == true else {
                     state.errorMessage = "마이크 권한이 필요합니다."
                     return .none
                 }
                 
                 if state.isRecording {
-                    // 녹음 중지
                     return .run { send in
                         let url = await audioClient.stopRecording()
                         await send(.recordingStopped(url))
                     }
                 } else {
+                    // 재생 중이면 먼저 정지
+                    let wasPlaying = state.isPlaying
+                    state.isPlaying = false
+                    state.currentlyPlayingID = nil
+                    
                     return .run { send in
+                        if wasPlaying {
+                            await audioClient.stopPlayback()
+                        }
                         do {
                             let url = try await makeRecordingURL()
                             try await audioClient.startRecording(to: url)
@@ -79,43 +106,72 @@ struct RecordingFeature {
                 state.errorMessage = nil
                 return .none
                 
-            case let .recordingStopped(url):
+            case .recordingStopped:
                 state.isRecording = false
-                state.recordingURL = url
-                return .none
+                // 녹음 완료 후 목록 갱신
+                return .send(.loadRecordings)
                 
-            case .playButtonTapped:
-                guard let url = state.recordingURL else {
-                    return .none
+            // MARK: - Playback
+                
+            case let .playRecording(recording):
+                // 이미 재생 중인 파일을 탭하면 정지
+                if state.currentlyPlayingID == recording.id {
+                    return .send(.stopPlayback)
                 }
                 
-                if state.isPlaying {
-                    // 재생 중지
-                    state.isPlaying = false
-                    return .run { _ in
+                // 다른 파일 재생 시작
+                state.isPlaying = true
+                state.currentlyPlayingID = recording.id
+                
+                return .run { send in
+                    do {
+                        // 기존 재생 정지
                         await audioClient.stopPlayback()
+                        try await audioClient.startPlayback(url: recording.url)
+                        // TODO: 재생 완료 감지 (Phase 2에서 구현)
+                    } catch {
+                        await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
                     }
-                } else {
-                    // 재생 시작
-                    state.isPlaying = true
-                    return .run { send in
-                        do {
-                            try await audioClient.startPlayback(url: url)
-                            // TODO: 재생 완료 감지 (Phase 2에서 구현)
-                        } catch {
-                            await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
-                        }
-                    }
+                }
+                
+            case .stopPlayback:
+                state.isPlaying = false
+                state.currentlyPlayingID = nil
+                return .run { _ in
+                    await audioClient.stopPlayback()
                 }
                 
             case .playbackFinished:
                 state.isPlaying = false
+                state.currentlyPlayingID = nil
                 return .none
+                
+            // MARK: - Recordings List
+                
+            case .loadRecordings:
+                state.isLoadingRecordings = true
+                return .run { send in
+                    do {
+                        let recordings = try await storageClient.fetchRecordings()
+                        await send(.recordingsLoaded(recordings))
+                    } catch {
+                        await send(.errorOccurred("녹음 목록을 불러올 수 없습니다."))
+                    }
+                }
+                
+            case let .recordingsLoaded(recordings):
+                state.recordings = recordings
+                state.isLoadingRecordings = false
+                return .none
+                
+            // MARK: - Error
                 
             case let .errorOccurred(message):
                 state.errorMessage = message
                 state.isRecording = false
                 state.isPlaying = false
+                state.currentlyPlayingID = nil
+                state.isLoadingRecordings = false
                 return .none
             }
         }
@@ -123,13 +179,13 @@ struct RecordingFeature {
     
     // MARK: - Helpers
     
-    private func makeRecordingURL() throws-> URL {
+    private func makeRecordingURL() throws -> URL {
         guard let documentsPath = FileManager.default
-                .urls(for: .documentDirectory, in: .userDomainMask)
-                .first
-            else {
-                throw NSError(domain: "Recording", code: 1, userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"])
-            }
+            .urls(for: .documentDirectory, in: .userDomainMask)
+            .first
+        else {
+            throw NSError(domain: "Recording", code: 1, userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"])
+        }
         let timestamp = Int(Date().timeIntervalSince1970)
         let fileName = "recording_\(timestamp).m4a"
         return documentsPath.appendingPathComponent(fileName)
