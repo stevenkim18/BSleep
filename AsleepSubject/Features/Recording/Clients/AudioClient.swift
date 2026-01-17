@@ -8,6 +8,14 @@
 import AVFoundation
 import Dependencies
 
+// MARK: - Playback Event
+
+/// 재생 이벤트 타입
+enum PlaybackEvent {
+    case finished
+    case interrupted
+}
+
 // MARK: - Protocol
 
 /// 오디오 녹음/재생을 위한 프로토콜
@@ -27,6 +35,9 @@ protocol AudioClientProtocol: Sendable {
     /// 재생 중지
     func stopPlayback() async
     
+    /// 재생 완료 이벤트 스트림
+    func playbackEvents() -> AsyncStream<PlaybackEvent>
+    
     /// 현재 녹음 중인지 확인
     var isRecording: Bool { get async }
     
@@ -43,6 +54,8 @@ actor LiveAudioClient: AudioClientProtocol {
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
     private var recordingURL: URL?
+    private var delegate: AudioPlayerDelegate?
+    private var eventContinuation: AsyncStream<PlaybackEvent>.Continuation?
     
     // MARK: - Protocol Properties
     
@@ -117,6 +130,18 @@ actor LiveAudioClient: AudioClientProtocol {
     
     // MARK: - Playback
     
+    func playbackEvents() -> AsyncStream<PlaybackEvent> {
+        AsyncStream { continuation in
+            Task {
+                await self.setEventContinuation(continuation)
+            }
+        }
+    }
+    
+    private func setEventContinuation(_ continuation: AsyncStream<PlaybackEvent>.Continuation) {
+        self.eventContinuation = continuation
+    }
+    
     func startPlayback(url: URL) async throws {
         try await MainActor.run {
             let session = AVAudioSession.sharedInstance()
@@ -124,20 +149,51 @@ actor LiveAudioClient: AudioClientProtocol {
             try session.setActive(true)
         }
         
+        // Delegate 생성
+        let delegate = AudioPlayerDelegate { [weak self] in
+            Task {
+                await self?.handlePlaybackFinished()
+            }
+        }
+        
         let newPlayer = try AVAudioPlayer(contentsOf: url)
+        newPlayer.delegate = delegate
         newPlayer.play()
         
         self.player = newPlayer
+        self.delegate = delegate
     }
     
     func stopPlayback() async {
         let currentPlayer = player
         player = nil
+        delegate = nil
         
         await MainActor.run {
             currentPlayer?.stop()
             try? AVAudioSession.sharedInstance().setActive(false)
         }
+    }
+    
+    private func handlePlaybackFinished() {
+        eventContinuation?.yield(.finished)
+        player = nil
+        delegate = nil
+    }
+}
+
+// MARK: - Audio Player Delegate
+
+private class AudioPlayerDelegate: NSObject, AVAudioPlayerDelegate {
+    let onFinish: @Sendable () -> Void
+    
+    init(onFinish: @escaping @Sendable () -> Void) {
+        self.onFinish = onFinish
+        super.init()
+    }
+    
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        onFinish()
     }
 }
 

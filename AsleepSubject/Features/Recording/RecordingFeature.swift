@@ -128,7 +128,18 @@ struct RecordingFeature {
                         // 기존 재생 정지
                         await audioClient.stopPlayback()
                         try await audioClient.startPlayback(url: recording.url)
-                        // TODO: 재생 완료 감지 (Phase 2에서 구현)
+                        
+                        // 재생 완료 감지
+                        for await event in audioClient.playbackEvents() {
+                            switch event {
+                            case .finished:
+                                await send(.playbackFinished)
+                                return // 스트림 종료
+                            case .interrupted:
+                                await send(.playbackFinished)
+                                return
+                            }
+                        }
                     } catch {
                         await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
                     }
