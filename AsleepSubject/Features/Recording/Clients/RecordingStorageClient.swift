@@ -35,7 +35,10 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
         }
         
         let files = try fileManager
-            .contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: [.creationDateKey])
+            .contentsOfDirectory(
+                at: documentsURL,
+                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey]
+            )
             .filter { $0.pathExtension == "m4a" }
         
         return files.compactMap { url -> RecordingEntity? in
@@ -44,16 +47,19 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
                 return nil
             }
             
+            // endedAt은 수정일 또는 duration 기반으로 계산
+            let modifiedAt = attrs[.modificationDate] as? Date
             let duration = getDuration(of: url)
+            let endedAt = modifiedAt ?? createdAt.addingTimeInterval(duration)
             
             return RecordingEntity(
                 id: UUID(),
                 url: url,
-                createdAt: createdAt,
-                duration: duration
+                startedAt: createdAt,
+                endedAt: endedAt
             )
         }
-        .sorted { $0.createdAt > $1.createdAt }
+        .sorted { $0.startedAt > $1.startedAt }
     }
     
     func deleteRecording(_ recording: RecordingEntity) async throws {

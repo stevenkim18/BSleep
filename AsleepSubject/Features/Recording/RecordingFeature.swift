@@ -13,6 +13,7 @@ import Foundation
 private enum RecordingCancelID: Hashable, Sendable {
     case playback
     case stateUpdates
+    case interruptionStream
 }
 
 @Reducer
@@ -26,6 +27,9 @@ struct RecordingFeature {
         var isPaused = false
         var permissionGranted: Bool?
         var errorMessage: String?
+        
+        // 인터럽션 상태
+        var isInterrupted = false
         
         // 재생 상태
         var playbackState: PlaybackState?
@@ -45,6 +49,10 @@ struct RecordingFeature {
         case recordButtonTapped
         case recordingStarted
         case recordingStopped(URL?)
+        
+        // 인터럽션
+        case interruptionReceived(RecorderInterruptionEvent)
+        case autoResumeRecording
         
         // 재생
         case playRecording(RecordingEntity)
@@ -93,10 +101,14 @@ struct RecordingFeature {
                 }
                 
                 if state.isRecording {
-                    return .run { send in
-                        let url = await recorderClient.stopRecording()
-                        await send(.recordingStopped(url))
-                    }
+                    // 녹음 중지
+                    return .merge(
+                        .cancel(id: RecordingCancelID.interruptionStream),
+                        .run { send in
+                            let url = await recorderClient.stopRecording()
+                            await send(.recordingStopped(url))
+                        }
+                    )
                 } else {
                     // 재생 중이면 먼저 정지
                     let wasPlaying = state.isPlaying
@@ -122,13 +134,50 @@ struct RecordingFeature {
                 
             case .recordingStarted:
                 state.isRecording = true
+                state.isInterrupted = false
                 state.errorMessage = nil
-                return .none
+                // 인터럽션 스트림 구독 시작
+                return .run { send in
+                    for await event in recorderClient.interruptionEventStream() {
+                        await send(.interruptionReceived(event))
+                    }
+                }
+                .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true)
                 
             case .recordingStopped:
                 state.isRecording = false
+                state.isInterrupted = false
                 // 녹음 완료 후 목록 갱신
                 return .send(.loadRecordings)
+                
+            // MARK: - Interruption
+                
+            case .interruptionReceived(.began):
+                guard state.isRecording else { return .none }
+                state.isInterrupted = true
+                state.isRecording = false
+                // 현재 녹음 저장
+                return .run { send in
+                    _ = await recorderClient.stopRecording()
+                    await send(.loadRecordings)
+                }
+                
+            case .interruptionReceived(.ended):
+                guard state.isInterrupted else { return .none }
+                // 자동으로 새 녹음 시작
+                return .send(.autoResumeRecording)
+                
+            case .autoResumeRecording:
+                state.isInterrupted = false
+                return .run { send in
+                    do {
+                        let url = try await makeRecordingURL()
+                        try await recorderClient.startRecording(to: url)
+                        await send(.recordingStarted)
+                    } catch {
+                        await send(.errorOccurred("녹음 재개 실패: \(error.localizedDescription)"))
+                    }
+                }
                 
             // MARK: - Playback
                 
@@ -241,10 +290,13 @@ struct RecordingFeature {
                 state.isRecording = false
                 state.isPlaying = false
                 state.isPaused = false
+                state.isInterrupted = false
                 state.currentlyPlayingID = nil
                 state.playbackState = nil
                 state.isLoadingRecordings = false
-                return .none
+                return .merge(
+                    .cancel(id: RecordingCancelID.interruptionStream)
+                )
             }
         }
     }
@@ -263,3 +315,4 @@ struct RecordingFeature {
         return documentsPath.appendingPathComponent(fileName)
     }
 }
+

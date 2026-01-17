@@ -54,8 +54,8 @@ struct RecordingRow: View {
             recording: RecordingEntity(
                 id: UUID(),
                 url: URL(fileURLWithPath: "/recording_12345.m4a"),
-                createdAt: Date(),
-                duration: 125
+                startedAt: Date().addingTimeInterval(-3600),
+                endedAt: Date()
             ),
             isPlaying: false
         ) {
@@ -66,8 +66,8 @@ struct RecordingRow: View {
             recording: RecordingEntity(
                 id: UUID(),
                 url: URL(fileURLWithPath: "/recording_67890.m4a"),
-                createdAt: Date().addingTimeInterval(-3600),
-                duration: 65
+                startedAt: Date().addingTimeInterval(-3600),
+                endedAt: Date()
             ),
             isPlaying: true
         ) {

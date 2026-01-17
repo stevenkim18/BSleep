@@ -8,6 +8,16 @@
 import AVFoundation
 import Dependencies
 
+// MARK: - Interruption Event
+
+/// 오디오 세션 인터럽션 이벤트
+enum RecorderInterruptionEvent: Equatable, Sendable {
+    /// 인터럽션 시작 (전화, Siri 등)
+    case began
+    /// 인터럽션 종료
+    case ended
+}
+
 // MARK: - Protocol
 
 /// 녹음 전용 프로토콜
@@ -23,6 +33,9 @@ protocol RecorderClientProtocol: Sendable {
     
     /// 현재 녹음 중인지 확인
     var isRecording: Bool { get async }
+    
+    /// 인터럽션 이벤트 스트림
+    func interruptionEventStream() -> AsyncStream<RecorderInterruptionEvent>
 }
 
 // MARK: - Live Implementation
@@ -32,6 +45,21 @@ actor LiveRecorderClient: RecorderClientProtocol {
     
     private var recorder: AVAudioRecorder?
     private var recordingURL: URL?
+    private var interruptionContinuation: AsyncStream<RecorderInterruptionEvent>.Continuation?
+    private var interruptionObserver: NSObjectProtocol?
+    
+    // MARK: - Init / Deinit
+    
+    init() {
+        setupInterruptionObserver()
+    }
+    
+    deinit {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        interruptionContinuation?.finish()
+    }
     
     // MARK: - Properties
     
@@ -91,6 +119,47 @@ actor LiveRecorderClient: RecorderClientProtocol {
         
         return currentURL
     }
+    
+    // MARK: - Interruption Handling
+    
+    private func setupInterruptionObserver() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            Task { await self?.handleInterruption(notification) }
+        }
+    }
+    
+    private func handleInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+        
+        switch type {
+        case .began:
+            interruptionContinuation?.yield(.began)
+        case .ended:
+            interruptionContinuation?.yield(.ended)
+        @unknown default:
+            break
+        }
+    }
+    
+    nonisolated func interruptionEventStream() -> AsyncStream<RecorderInterruptionEvent> {
+        AsyncStream { continuation in
+            Task { await self.setInterruptionContinuation(continuation) }
+        }
+    }
+    
+    private func setInterruptionContinuation(
+        _ continuation: AsyncStream<RecorderInterruptionEvent>.Continuation
+    ) {
+        self.interruptionContinuation = continuation
+    }
 }
 
 // MARK: - Dependency Key
@@ -107,3 +176,4 @@ extension DependencyValues {
         set { self[RecorderClientKey.self] = newValue }
     }
 }
+
