@@ -68,7 +68,7 @@ struct RecordingView: View {
                 Circle()
                     .fill(.red)
                     .frame(width: 16, height: 16)
-                Text("녹음 중...")
+                Text("수면 녹음 중...")
                     .font(.headline)
             } else if store.isPlaying && !store.isPaused {
                 Image(systemName: "waveform")

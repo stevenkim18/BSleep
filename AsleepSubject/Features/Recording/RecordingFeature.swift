@@ -74,12 +74,16 @@ struct RecordingFeature {
     @Dependency(\.recorderClient) var recorderClient
     @Dependency(\.playerClient) var playerClient
     @Dependency(\.recordingStorageClient) var storageClient
+    @Dependency(\.liveActivityClient) var liveActivityClient
     
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
             case .onAppear:
                 return .run { send in
+                    // 앱 재시작 시 기존 Live Activity 정리
+                    await liveActivityClient.endAllExistingActivities()
+                    
                     let granted = await recorderClient.requestPermission()
                     await send(.permissionResponse(granted))
                     await send(.loadRecordings)
@@ -136,19 +140,29 @@ struct RecordingFeature {
                 state.isRecording = true
                 state.isInterrupted = false
                 state.errorMessage = nil
-                // 인터럽션 스트림 구독 시작
-                return .run { send in
-                    for await event in recorderClient.interruptionEventStream() {
-                        await send(.interruptionReceived(event))
+                // Live Activity 시작 + 인터럽션 스트림 구독
+                return .merge(
+                    .run { _ in
+                        try? await liveActivityClient.startActivity(recordingName: "수면 녹음")
+                    },
+                    .run { send in
+                        for await event in recorderClient.interruptionEventStream() {
+                            await send(.interruptionReceived(event))
+                        }
                     }
-                }
-                .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true)
+                    .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true)
+                )
                 
             case .recordingStopped:
                 state.isRecording = false
                 state.isInterrupted = false
-                // 녹음 완료 후 목록 갱신
-                return .send(.loadRecordings)
+                // Live Activity 종료 + 녹음 목록 갱신
+                return .merge(
+                    .run { _ in
+                        await liveActivityClient.endActivity()
+                    },
+                    .send(.loadRecordings)
+                )
                 
             // MARK: - Interruption
                 
