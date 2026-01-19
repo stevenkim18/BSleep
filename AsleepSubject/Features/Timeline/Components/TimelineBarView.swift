@@ -11,7 +11,7 @@ import SwiftUI
 /// - 시간 레이블 중앙을 기준으로 위치 계산
 struct TimelineBarView: View {
     let config: TimelineConfig
-    let recording: RecordingEntity
+    let recording: Recording
     
     // MARK: - 텍스트 표시 임계값
     

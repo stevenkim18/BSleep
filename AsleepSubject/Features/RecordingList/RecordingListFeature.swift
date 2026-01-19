@@ -1,5 +1,5 @@
 //
-//  TimelineFeature.swift
+//  RecordingListFeature.swift
 //  AsleepSubject
 //
 //  Created by seungwooKim on 1/19/26.
@@ -9,12 +9,10 @@ import ComposableArchitecture
 import Foundation
 
 @Reducer
-struct TimelineFeature {
+struct RecordingListFeature {
     
     @ObservableState
     struct State {
-        // MARK: - 데이터
-        
         /// 녹음 목록
         var recordings: [Recording] = []
         
@@ -24,51 +22,30 @@ struct TimelineFeature {
         /// 에러 메시지
         var errorMessage: String?
         
-        /// 재생 화면 (sheet)
+        /// 선택된 녹음 (재생 sheet용)
         @Presents var playback: PlaybackFeature.State?
-        
-        // MARK: - 설정
-        
-        /// 레이아웃 설정
-        var config = TimelineConfig()
-        
-        // MARK: - 계산된 값
-        
-        /// 표시할 날짜 범위 (sleepDate 기준, 최신 → 과거 순)
-        var dateRange: [Date] {
-            let calendar = Calendar.current
-            let today = calendar.startOfDay(for: Date())
-            
-            return (0..<config.numberOfDays).compactMap { offset in
-                calendar.date(byAdding: .day, value: -offset, to: today)
-            }
-        }
-        
-        /// 날짜별 녹음 그룹핑
-        var recordingsByDate: [Date: [Recording]] {
-            Dictionary(grouping: recordings, by: { $0.sleepDate })
-        }
     }
     
-    enum Action: BindableAction {
-        case binding(BindingAction<State>)
+    enum Action {
+        // 라이프사이클
         case onAppear
+        
+        // 녹음 목록
         case recordingsLoaded([Recording])
         case recordingTapped(Recording)
+        
+        // 자식 피처
         case playback(PresentationAction<PlaybackFeature.Action>)
+        
+        // 에러
         case errorOccurred(String)
     }
     
     @Dependency(\.recordingStorageClient) var recordingStorageClient
-    ㅈ
+    
     var body: some ReducerOf<Self> {
-        BindingReducer()
-        
         Reduce { state, action in
             switch action {
-            case .binding:
-                return .none
-                
             case .onAppear:
                 state.isLoading = true
                 return .run { send in

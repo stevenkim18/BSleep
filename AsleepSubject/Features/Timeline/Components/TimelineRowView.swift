@@ -11,8 +11,8 @@ import SwiftUI
 struct TimelineRowView: View {
     let config: TimelineConfig
     let date: Date
-    let recordings: [RecordingEntity]
-    let onRecordingTapped: (RecordingEntity) -> Void
+    let recordings: [Recording]
+    let onRecordingTapped: (Recording) -> Void
     
     var body: some View {
         ZStack(alignment: .leading) {

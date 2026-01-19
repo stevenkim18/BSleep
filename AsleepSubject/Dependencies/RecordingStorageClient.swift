@@ -14,10 +14,10 @@ import Foundation
 /// 녹음 파일 저장소 관리를 위한 프로토콜
 protocol RecordingStorageClientProtocol: Sendable {
     /// 저장된 녹음 파일 목록 조회
-    func fetchRecordings() async throws -> [RecordingEntity]
+    func fetchRecordings() async throws -> [Recording]
     
     /// 녹음 파일 삭제
-    func deleteRecording(_ recording: RecordingEntity) async throws
+    func deleteRecording(_ recording: Recording) async throws
 }
 
 // MARK: - Live Implementation
@@ -27,7 +27,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     
     private let fileManager = FileManager.default
     
-    func fetchRecordings() async throws -> [RecordingEntity] {
+    func fetchRecordings() async throws -> [Recording] {
         guard let documentsURL = fileManager
             .urls(for: .documentDirectory, in: .userDomainMask)
             .first else {
@@ -41,7 +41,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
             )
             .filter { $0.pathExtension == "m4a" }
         
-        return files.compactMap { url -> RecordingEntity? in
+        return files.compactMap { url -> Recording? in
             guard let attrs = try? fileManager.attributesOfItem(atPath: url.path),
                   let createdAt = attrs[.creationDate] as? Date else {
                 return nil
@@ -52,7 +52,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
             let duration = getDuration(of: url)
             let endedAt = modifiedAt ?? createdAt.addingTimeInterval(duration)
             
-            return RecordingEntity(
+            return Recording(
                 id: UUID(),
                 url: url,
                 startedAt: createdAt,
@@ -62,7 +62,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
         .sorted { $0.startedAt > $1.startedAt }
     }
     
-    func deleteRecording(_ recording: RecordingEntity) async throws {
+    func deleteRecording(_ recording: Recording) async throws {
         try fileManager.removeItem(at: recording.url)
     }
     
@@ -81,17 +81,17 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
 #if DEBUG
 /// Preview/Test용 Mock 구현체
 struct MockRecordingStorageClient: RecordingStorageClientProtocol {
-    var recordings: [RecordingEntity] = []
+    var recordings: [Recording] = []
     var shouldFail: Bool = false
     
-    func fetchRecordings() async throws -> [RecordingEntity] {
+    func fetchRecordings() async throws -> [Recording] {
         if shouldFail {
             throw NSError(domain: "MockError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Mock fetch failed"])
         }
         return recordings
     }
     
-    func deleteRecording(_ recording: RecordingEntity) async throws {
+    func deleteRecording(_ recording: Recording) async throws {
         if shouldFail {
             throw NSError(domain: "MockError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Mock delete failed"])
         }

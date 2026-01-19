@@ -11,33 +11,28 @@ import Foundation
 // MARK: - Cancel ID
 
 private enum RecordingCancelID: Hashable, Sendable {
-    case playback
-    case stateUpdates
     case interruptionStream
+    case meteringUpdates
 }
 
 @Reducer
 struct RecordingFeature {
     
     @ObservableState
-    struct State: Equatable {
+    struct State {
         // 녹음 상태
         var isRecording = false
-        var isPlaying = false
-        var isPaused = false
         var permissionGranted: Bool?
         var errorMessage: String?
+        
+        // 녹음 시간
+        var recordingDuration: TimeInterval = 0
         
         // 인터럽션 상태
         var isInterrupted = false
         
-        // 재생 상태
-        var playbackState: PlaybackState?
-        
-        // 녹음 목록
-        var recordings: [RecordingEntity] = []
-        var currentlyPlayingID: UUID?
-        var isLoadingRecordings = false
+        // 웨이브폼 샘플 (미터링)
+        var meteringSamples: [Float] = []
     }
     
     enum Action {
@@ -50,31 +45,22 @@ struct RecordingFeature {
         case recordingStarted
         case recordingStopped(URL?)
         
+        // 녹음 시간 업데이트
+        case recordingDurationUpdated(TimeInterval)
+        case meteringUpdated(Float)
+        
         // 인터럽션
         case interruptionReceived(RecorderInterruptionEvent)
         case autoResumeRecording
         
-        // 재생
-        case playRecording(RecordingEntity)
-        case pauseTapped
-        case resumeTapped
-        case stopTapped
-        case seekTo(TimeInterval)
-        case playbackStateUpdated(PlaybackState)
-        case playbackFinished
-        
-        // 녹음 목록
-        case loadRecordings
-        case recordingsLoaded([RecordingEntity])
-        
         // 에러
         case errorOccurred(String)
+        case clearError
     }
     
     @Dependency(\.recorderClient) var recorderClient
-    @Dependency(\.playerClient) var playerClient
-    @Dependency(\.recordingStorageClient) var storageClient
     @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.continuousClock) var clock
     
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -86,7 +72,6 @@ struct RecordingFeature {
                     
                     let granted = await recorderClient.requestPermission()
                     await send(.permissionResponse(granted))
-                    await send(.loadRecordings)
                 }
                 
             case let .permissionResponse(granted):
@@ -108,23 +93,15 @@ struct RecordingFeature {
                     // 녹음 중지
                     return .merge(
                         .cancel(id: RecordingCancelID.interruptionStream),
+                        .cancel(id: RecordingCancelID.meteringUpdates),
                         .run { send in
                             let url = await recorderClient.stopRecording()
                             await send(.recordingStopped(url))
                         }
                     )
                 } else {
-                    // 재생 중이면 먼저 정지
-                    let wasPlaying = state.isPlaying
-                    state.isPlaying = false
-                    state.isPaused = false
-                    state.currentlyPlayingID = nil
-                    state.playbackState = nil
-                    
+                    // 녹음 시작
                     return .run { send in
-                        if wasPlaying {
-                            await playerClient.stop()
-                        }
                         do {
                             let url = try await makeRecordingURL()
                             try await recorderClient.startRecording(to: url)
@@ -133,14 +110,16 @@ struct RecordingFeature {
                             await send(.errorOccurred("녹음을 시작할 수 없습니다: \(error.localizedDescription)"))
                         }
                     }
-                    .cancellable(id: RecordingCancelID.playback, cancelInFlight: true)
                 }
                 
             case .recordingStarted:
                 state.isRecording = true
                 state.isInterrupted = false
                 state.errorMessage = nil
-                // Live Activity 시작 + 인터럽션 스트림 구독
+                state.recordingDuration = 0
+                state.meteringSamples = []
+                
+                // Live Activity 시작 + 인터럽션 스트림 구독 + 타이머 시작
                 return .merge(
                     .run { _ in
                         try? await liveActivityClient.startActivity(recordingName: "수면 녹음")
@@ -150,19 +129,39 @@ struct RecordingFeature {
                             await send(.interruptionReceived(event))
                         }
                     }
-                    .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true)
+                    .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true),
+                    // 녹음 시간 업데이트 (1초마다)
+                    .run { send in
+                        var elapsed: TimeInterval = 0
+                        for await _ in clock.timer(interval: .seconds(1)) {
+                            elapsed += 1
+                            await send(.recordingDurationUpdated(elapsed))
+                        }
+                    }
+                    .cancellable(id: RecordingCancelID.meteringUpdates, cancelInFlight: true)
                 )
                 
             case .recordingStopped:
                 state.isRecording = false
                 state.isInterrupted = false
-                // Live Activity 종료 + 녹음 목록 갱신
-                return .merge(
-                    .run { _ in
-                        await liveActivityClient.endActivity()
-                    },
-                    .send(.loadRecordings)
-                )
+                state.recordingDuration = 0
+                state.meteringSamples = []
+                // Live Activity 종료
+                return .run { _ in
+                    await liveActivityClient.endActivity()
+                }
+                
+            case let .recordingDurationUpdated(duration):
+                state.recordingDuration = duration
+                return .none
+                
+            case let .meteringUpdated(level):
+                // 최근 50개 샘플만 유지
+                state.meteringSamples.append(level)
+                if state.meteringSamples.count > 50 {
+                    state.meteringSamples.removeFirst()
+                }
+                return .none
                 
             // MARK: - Interruption
                 
@@ -171,10 +170,12 @@ struct RecordingFeature {
                 state.isInterrupted = true
                 state.isRecording = false
                 // 현재 녹음 저장
-                return .run { send in
-                    _ = await recorderClient.stopRecording()
-                    await send(.loadRecordings)
-                }
+                return .merge(
+                    .cancel(id: RecordingCancelID.meteringUpdates),
+                    .run { send in
+                        _ = await recorderClient.stopRecording()
+                    }
+                )
                 
             case .interruptionReceived(.ended):
                 guard state.isInterrupted else { return .none }
@@ -193,124 +194,19 @@ struct RecordingFeature {
                     }
                 }
                 
-            // MARK: - Playback
-                
-            case let .playRecording(recording):
-                // 이미 재생 중인 파일을 탭하면 정지
-                if state.currentlyPlayingID == recording.id {
-                    return .send(.stopTapped)
-                }
-                
-                // 다른 파일 재생 시작
-                state.isPlaying = true
-                state.isPaused = false
-                state.currentlyPlayingID = recording.id
-                
-                return .merge(
-                    // 재생 시작 및 완료 감지
-                    .run { send in
-                        do {
-                            await playerClient.stop()
-                            try await playerClient.play(url: recording.url)
-                            
-                            for await event in playerClient.eventStream() {
-                                switch event {
-                                case .finished, .interrupted:
-                                    await send(.playbackFinished)
-                                    return
-                                }
-                            }
-                        } catch {
-                            await send(.errorOccurred("재생할 수 없습니다: \(error.localizedDescription)"))
-                        }
-                    }
-                    .cancellable(id: RecordingCancelID.playback, cancelInFlight: true),
-                    
-                    // 상태 업데이트 구독
-                    .run { send in
-                        for await playbackState in playerClient.stateStream() {
-                            await send(.playbackStateUpdated(playbackState))
-                        }
-                    }
-                    .cancellable(id: RecordingCancelID.stateUpdates, cancelInFlight: true)
-                )
-                
-            case .pauseTapped:
-                state.isPaused = true
-                return .run { _ in
-                    await playerClient.pause()
-                }
-                
-            case .resumeTapped:
-                state.isPaused = false
-                return .run { _ in
-                    await playerClient.resume()
-                }
-                
-            case .stopTapped:
-                state.isPlaying = false
-                state.isPaused = false
-                state.currentlyPlayingID = nil
-                state.playbackState = nil
-                return .merge(
-                    .cancel(id: RecordingCancelID.playback),
-                    .cancel(id: RecordingCancelID.stateUpdates),
-                    .run { _ in
-                        await playerClient.stop()
-                    }
-                )
-                
-            case let .seekTo(time):
-                return .run { _ in
-                    await playerClient.seek(to: time)
-                }
-                
-            case let .playbackStateUpdated(playbackState):
-                state.playbackState = playbackState
-                state.isPaused = !playbackState.isPlaying && state.isPlaying
-                return .none
-                
-            case .playbackFinished:
-                state.isPlaying = false
-                state.isPaused = false
-                state.currentlyPlayingID = nil
-                state.playbackState = nil
-                return .merge(
-                    .cancel(id: RecordingCancelID.stateUpdates)
-                )
-                
-            // MARK: - Recordings List
-                
-            case .loadRecordings:
-                state.isLoadingRecordings = true
-                return .run { send in
-                    do {
-                        let recordings = try await storageClient.fetchRecordings()
-                        await send(.recordingsLoaded(recordings))
-                    } catch {
-                        await send(.errorOccurred("녹음 목록을 불러올 수 없습니다."))
-                    }
-                }
-                
-            case let .recordingsLoaded(recordings):
-                state.recordings = recordings
-                state.isLoadingRecordings = false
-                return .none
-                
             // MARK: - Error
                 
             case let .errorOccurred(message):
                 state.errorMessage = message
                 state.isRecording = false
-                state.isPlaying = false
-                state.isPaused = false
                 state.isInterrupted = false
-                state.currentlyPlayingID = nil
-                state.playbackState = nil
-                state.isLoadingRecordings = false
-                return .merge(
-                    .cancel(id: RecordingCancelID.interruptionStream)
-                )
+                state.recordingDuration = 0
+                state.meteringSamples = []
+                return .cancel(id: RecordingCancelID.interruptionStream)
+                
+            case .clearError:
+                state.errorMessage = nil
+                return .none
             }
         }
     }
@@ -329,4 +225,3 @@ struct RecordingFeature {
         return documentsPath.appendingPathComponent(fileName)
     }
 }
-

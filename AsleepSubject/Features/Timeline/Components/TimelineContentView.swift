@@ -11,8 +11,8 @@ import SwiftUI
 struct TimelineContentView: View {
     let config: TimelineConfig
     let dates: [Date]
-    let recordingsByDate: [Date: [RecordingEntity]]
-    let onRecordingTapped: (RecordingEntity) -> Void
+    let recordingsByDate: [Date: [Recording]]
+    let onRecordingTapped: (Recording) -> Void
     
     var body: some View {
         VStack(spacing: 0) {
@@ -34,7 +34,7 @@ struct TimelineContentView: View {
 #if DEBUG
 #Preview("TimelineContentView") {
     let config = TimelineConfig()
-    let mockRecordings = RecordingEntity.mockRecordings
+    let mockRecordings = Recording.mockRecordings
     let recordingsByDate = Dictionary(grouping: mockRecordings, by: { $0.sleepDate })
     
     let dates = (0..<14).compactMap { offset in

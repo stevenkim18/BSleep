@@ -19,35 +19,33 @@ struct TimelineView: View {
     @State private var horizontalScrollOffset: CGFloat = 0
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // 다크 배경 그라데이션
-                AppColors.backgroundGradient
-                    .ignoresSafeArea()
-                
-                // 콘텐츠
-                if store.isLoading {
-                    ProgressView()
-                        .tint(.white)
-                } else if let errorMessage = store.errorMessage {
-                    errorView(message: errorMessage)
-                } else {
-                    timelineContent
-                }
-            }
-            .navigationTitle("수면 기록")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(AppColors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .navigationDestination(item: $store.selectedRecording) { recording in
-                // TODO: 재생 화면으로 이동 (PlaybackView)
-                Text("재생 화면: \(recording.fileName)")
-                    .foregroundStyle(.white)
+        ZStack {
+            // 다크 배경 그라데이션
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
+            
+            // 콘텐츠
+            if store.isLoading {
+                ProgressView()
+                    .tint(.white)
+            } else if let errorMessage = store.errorMessage {
+                errorView(message: errorMessage)
+            } else {
+                timelineContent
             }
         }
+        .navigationTitle("수면 기록")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppColors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .onAppear {
             store.send(.onAppear)
+        }
+        .sheet(item: $store.scope(state: \.playback, action: \.playback)) { playbackStore in
+            PlaybackView(store: playbackStore)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.hidden)
         }
     }
     
@@ -153,44 +151,52 @@ struct TimelineView: View {
 
 #if DEBUG
 #Preview("TimelineView - Full") {
-    TimelineView(
-        store: Store(initialState: TimelineFeature.State()) {
-            TimelineFeature()
-        } withDependencies: {
-            $0.recordingStorageClient = MockRecordingStorageClient(
-                recordings: RecordingEntity.mockRecordings
-            )
-        }
-    )
+    NavigationStack {
+        TimelineView(
+            store: Store(initialState: TimelineFeature.State()) {
+                TimelineFeature()
+            } withDependencies: {
+                $0.recordingStorageClient = MockRecordingStorageClient(
+                    recordings: Recording.mockRecordings
+                )
+            }
+        )
+    }
 }
 
 #Preview("TimelineView - Empty") {
-    TimelineView(
-        store: Store(initialState: TimelineFeature.State()) {
-            TimelineFeature()
-        } withDependencies: {
-            $0.recordingStorageClient = MockRecordingStorageClient(recordings: [])
-        }
-    )
+    NavigationStack {
+        TimelineView(
+            store: Store(initialState: TimelineFeature.State()) {
+                TimelineFeature()
+            } withDependencies: {
+                $0.recordingStorageClient = MockRecordingStorageClient(recordings: [])
+            }
+        )
+    }
 }
 
 #Preview("TimelineView - Loading") {
-    TimelineView(
-        store: Store(
-            initialState: TimelineFeature.State(isLoading: true)
-        ) {
-            EmptyReducer()
-        }
-    )
+    NavigationStack {
+        TimelineView(
+            store: Store(
+                initialState: TimelineFeature.State(isLoading: true)
+            ) {
+                EmptyReducer()
+            }
+        )
+    }
 }
 
 #Preview("TimelineView - Error") {
-    TimelineView(
-        store: Store(initialState: TimelineFeature.State()) {
-            TimelineFeature()
-        } withDependencies: {
-            $0.recordingStorageClient = MockRecordingStorageClient(shouldFail: true)
-        }
-    )
+    NavigationStack {
+        TimelineView(
+            store: Store(initialState: TimelineFeature.State()) {
+                TimelineFeature()
+            } withDependencies: {
+                $0.recordingStorageClient = MockRecordingStorageClient(shouldFail: true)
+            }
+        )
+    }
 }
 #endif

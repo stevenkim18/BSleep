@@ -1,5 +1,5 @@
 //
-//  RecordingEntity.swift
+//  Recording.swift
 //  AsleepSubject
 //
 //  Created by seungwooKim on 1/17/26.
@@ -7,8 +7,8 @@
 
 import Foundation
 
-/// 녹음 파일 정보를 담는 엔티티
-struct RecordingEntity: Equatable, Identifiable {
+/// 녹음 파일 정보를 담는 모델
+struct Recording: Equatable, Identifiable {
     let id: UUID
     let url: URL
     let startedAt: Date
@@ -60,9 +60,9 @@ extension Date {
 // MARK: - Mock Data for Previews
 
 #if DEBUG
-extension RecordingEntity {
+extension Recording {
     /// 다양한 케이스의 Mock 녹음 데이터
-    static var mockRecordings: [RecordingEntity] {
+    static var mockRecordings: [Recording] {
         [
             // Case 1: 일반적인 밤 수면 (7시간)
             .mock(
@@ -135,7 +135,7 @@ extension RecordingEntity {
         daysAgo: Int,
         startHour: Int, startMinute: Int,
         endHour: Int, endMinute: Int
-    ) -> RecordingEntity {
+    ) -> Recording {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         guard let baseDate = calendar.date(byAdding: .day, value: -daysAgo, to: today) else {
@@ -171,7 +171,7 @@ extension RecordingEntity {
             endDate = calendar.date(byAdding: .day, value: 1, to: endDate) ?? endDate
         }
         
-        return RecordingEntity(
+        return Recording(
             id: UUID(),
             url: URL(fileURLWithPath: "/mock/recording_\(daysAgo).m4a"),
             startedAt: startDate,
