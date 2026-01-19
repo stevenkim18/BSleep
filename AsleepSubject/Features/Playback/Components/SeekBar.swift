@@ -12,6 +12,7 @@ struct SeekBar: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
+    var tintColor: Color = AppColors.primaryAccent // 기본값 설정
     
     @State private var isDragging = false
     @State private var dragProgress: Double = 0
@@ -21,6 +22,10 @@ struct SeekBar: View {
         return isDragging ? dragProgress : currentTime / duration
     }
     
+    private var activeColor: Color {
+        tintColor
+    }
+    
     var body: some View {
         VStack(spacing: 8) {
             // 프로그레스 바
@@ -28,17 +33,17 @@ struct SeekBar: View {
                 ZStack(alignment: .leading) {
                     // 배경 트랙
                     Capsule()
-                        .fill(Color(.systemGray5))
+                        .fill(Color.white.opacity(0.2)) // 다크 모드에 맞게 수정
                         .frame(height: 4)
                     
                     // 진행률 트랙
                     Capsule()
-                        .fill(Color.blue)
+                        .fill(activeColor)
                         .frame(width: max(0, geometry.size.width * progress), height: 4)
                     
                     // 드래그 핸들 (Thumb)
                     Circle()
-                        .fill(Color.blue)
+                        .fill(activeColor)
                         .frame(width: isDragging ? 16 : 12, height: isDragging ? 16 : 12)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                         .offset(x: max(0, min(geometry.size.width - 12, geometry.size.width * progress - 6)))
@@ -90,12 +95,17 @@ struct SeekBar: View {
 }
 
 #Preview {
-    VStack {
-        SeekBar(
-            currentTime: 45,
-            duration: 150,
-            onSeek: { print("Seek to: \($0)") }
-        )
-        .padding()
+    ZStack {
+        AppColors.background.ignoresSafeArea()
+        
+        VStack {
+            SeekBar(
+                currentTime: 45,
+                duration: 150,
+                onSeek: { print("Seek to: \($0)") },
+                tintColor: AppColors.primaryAccent
+            )
+            .padding()
+        }
     }
 }

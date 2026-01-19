@@ -19,7 +19,20 @@ struct RecordingView: View {
     var body: some View {
         ZStack {
             // 배경
-            backgroundGradient
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
+            
+            // 녹음 중일 때 은은한 붉은 빛 배경 효과
+            if store.isRecording {
+                RadialGradient(
+                    colors: [Color.red.opacity(0.15), Color.clear],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 400
+                )
+                .ignoresSafeArea()
+                .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+            }
             
             VStack(spacing: 0) {
                 // 상단 네비게이션 버튼
@@ -39,6 +52,7 @@ struct RecordingView: View {
                     .padding(.bottom, 60)
             }
         }
+        .preferredColorScheme(.dark) // 강제 다크 모드
         .onAppear {
             store.send(.onAppear)
         }
@@ -48,20 +62,6 @@ struct RecordingView: View {
                 errorOverlay(message: errorMessage)
             }
         }
-    }
-    
-    // MARK: - Background
-    
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: store.isRecording 
-                ? [Color.red.opacity(0.1), Color(.systemBackground)]
-                : [Color.blue.opacity(0.05), Color(.systemBackground)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
-        .animation(.easeInOut(duration: 0.5), value: store.isRecording)
     }
     
     // MARK: - Navigation Buttons
@@ -74,14 +74,18 @@ struct RecordingView: View {
             } label: {
                 Label("목록", systemImage: "list.bullet")
                     .font(.callout)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.white.opacity(0.9))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color(.systemGray6))
+                    .background(Color.white.opacity(0.1))
                     .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             }
             .disabled(store.isRecording)
-            .opacity(store.isRecording ? 0.5 : 1)
+            .opacity(store.isRecording ? 0.3 : 1)
             
             // 타임라인 버튼
             Button {
@@ -89,14 +93,18 @@ struct RecordingView: View {
             } label: {
                 Label("타임라인", systemImage: "chart.bar.xaxis")
                     .font(.callout)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.white.opacity(0.9))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color(.systemGray6))
+                    .background(Color.white.opacity(0.1))
                     .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             }
             .disabled(store.isRecording)
-            .opacity(store.isRecording ? 0.5 : 1)
+            .opacity(store.isRecording ? 0.3 : 1)
             
             Spacer()
         }
@@ -105,28 +113,37 @@ struct RecordingView: View {
     // MARK: - Recording Status View
     
     private var recordingStatusView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 32) {
             // 상태 아이콘
             ZStack {
                 // 외부 링
                 Circle()
-                    .stroke(store.isRecording ? Color.red.opacity(0.3) : Color.blue.opacity(0.1), lineWidth: 8)
-                    .frame(width: 180, height: 180)
+                    .stroke(
+                        store.isRecording ? Color.red.opacity(0.3) : AppColors.primaryAccent.opacity(0.2),
+                        lineWidth: 4
+                    )
+                    .frame(width: 200, height: 200)
                 
                 // 펄스 애니메이션 (녹음 중)
                 if store.isRecording {
                     PulseView()
+                } else {
+                    // 대기 상태일 때 은은한 숨쉬기 효과
+                    Circle()
+                        .fill(AppColors.primaryAccent.opacity(0.05))
+                        .frame(width: 180, height: 180)
                 }
                 
                 // 중앙 아이콘
                 Image(systemName: store.isRecording ? "waveform" : "mic.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(store.isRecording ? .red : .blue)
+                    .font(.system(size: 64))
+                    .foregroundStyle(store.isRecording ? .red : AppColors.primaryAccent)
                     .symbolEffect(.variableColor.iterative, isActive: store.isRecording)
+                    .shadow(color: (store.isRecording ? Color.red : AppColors.primaryAccent).opacity(0.5), radius: 20)
             }
             
             // 상태 텍스트
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 if store.isRecording {
                     Text("녹음 중")
                         .font(.title2.bold())
@@ -134,8 +151,9 @@ struct RecordingView: View {
                     
                     // 녹음 시간
                     Text(formatDuration(store.recordingDuration))
-                        .font(.system(size: 48, weight: .light, design: .monospaced))
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 64, weight: .thin, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                 } else if store.isInterrupted {
                     Text("인터럽션 발생")
                         .font(.title2.bold())
@@ -143,19 +161,19 @@ struct RecordingView: View {
                     
                     Text("잠시 후 자동으로 재개됩니다")
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
                 } else {
                     Text("수면 녹음")
                         .font(.title2.bold())
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                     
                     Text("버튼을 눌러 녹음을 시작하세요")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .font(.body)
+                        .foregroundStyle(.white.opacity(0.6))
                 }
             }
         }
-        .animation(.easeInOut, value: store.isRecording)
+        .animation(.spring(duration: 0.4), value: store.isRecording)
     }
     
     // MARK: - Record Button
@@ -165,27 +183,34 @@ struct RecordingView: View {
             store.send(.recordButtonTapped)
         } label: {
             ZStack {
-                // 외부 원
+                // 외부 원 (블러 효과 포함)
                 Circle()
-                    .stroke(Color(.systemGray4), lineWidth: 4)
-                    .frame(width: 88, height: 88)
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 100, height: 100)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
                 
-                // 내부 버튼
+                // 버튼 내부
                 if store.isRecording {
                     // 정지 버튼 (사각형)
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(.red)
-                        .frame(width: 32, height: 32)
+                        .fill(Color.red.gradient)
+                        .frame(width: 36, height: 36)
+                        .shadow(color: .red.opacity(0.4), radius: 8)
                 } else {
                     // 녹음 버튼 (원)
                     Circle()
-                        .fill(.red)
-                        .frame(width: 72, height: 72)
+                        .fill(Color.red.gradient)
+                        .frame(width: 80, height: 80)
+                        .shadow(color: .red.opacity(0.3), radius: 8)
                 }
             }
         }
         .disabled(store.permissionGranted == false)
         .opacity(store.permissionGranted == false ? 0.5 : 1)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: store.isRecording)
         .accessibilityLabel(store.isRecording ? "녹음 정지" : "녹음 시작")
     }
     
@@ -195,34 +220,44 @@ struct RecordingView: View {
         VStack {
             Spacer()
             
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white)
+                
                 Text(message)
-                    .font(.callout)
+                    .font(.body)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 
-                if store.permissionGranted == false {
-                    Button("설정 열기") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
+                HStack(spacing: 16) {
+                    if store.permissionGranted == false {
+                        Button("설정 열기") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color(hex: "333333"))
                     }
-                    .font(.callout.bold())
-                    .foregroundStyle(.white)
+                    
+                    Button("닫기") {
+                        store.send(.clearError)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
                 }
-                
-                Button("닫기") {
-                    store.send(.clearError)
-                }
-                .font(.callout)
-                .foregroundStyle(.white.opacity(0.8))
             }
-            .padding()
-            .background(.red.opacity(0.9))
-            .cornerRadius(12)
-            .padding()
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.red.opacity(0.9))
+                    .shadow(radius: 20)
+            )
+            .padding(.horizontal, 32)
             .padding(.bottom, 100)
         }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
     
     // MARK: - Helpers
@@ -246,18 +281,27 @@ private struct PulseView: View {
     @State private var animate = false
     
     var body: some View {
-        Circle()
-            .stroke(Color.red.opacity(0.5), lineWidth: 2)
-            .frame(width: 180, height: 180)
-            .scaleEffect(animate ? 1.3 : 1.0)
-            .opacity(animate ? 0 : 0.8)
-            .animation(
-                .easeOut(duration: 1.5).repeatForever(autoreverses: false),
-                value: animate
-            )
-            .onAppear {
-                animate = true
-            }
+        ZStack {
+            Circle()
+                .stroke(Color.red.opacity(0.4), lineWidth: 1)
+                .frame(width: 180, height: 180)
+                .scaleEffect(animate ? 1.5 : 1.0)
+                .opacity(animate ? 0 : 0.8)
+            
+            Circle()
+                .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                .frame(width: 180, height: 180)
+                .scaleEffect(animate ? 1.35 : 1.0)
+                .opacity(animate ? 0 : 0.6)
+                .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.2), value: animate)
+        }
+        .animation(
+            .easeOut(duration: 1.5).repeatForever(autoreverses: false),
+            value: animate
+        )
+        .onAppear {
+            animate = true
+        }
     }
 }
 

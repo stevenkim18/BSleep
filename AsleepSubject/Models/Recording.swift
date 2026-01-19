@@ -41,11 +41,17 @@ struct Recording: Equatable, Identifiable {
         startedAt.formatted(date: .abbreviated, time: .shortened)
     }
     
-    /// 포맷된 재생 시간 문자열 (mm:ss)
+    /// 포맷된 재생 시간 문자열 (h:mm:ss 또는 mm:ss)
     var formattedDuration: String {
-        let minutes = Int(duration) / 60
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
         let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
     }
 }
 

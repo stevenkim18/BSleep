@@ -28,7 +28,7 @@ struct PlaybackView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(AppColors.backgroundSecondary.ignoresSafeArea())
         .onAppear {
             store.send(.onAppear)
         }
@@ -46,36 +46,40 @@ struct PlaybackView: View {
     
     private var dragHandle: some View {
         Capsule()
-            .fill(Color(.systemGray4))
+            .fill(Color.white.opacity(0.2))
             .frame(width: 36, height: 5)
-            .padding(.top, 8)
+            .padding(.top, 20) // 상단 여백 추가
             .padding(.bottom, 16)
     }
     
     // MARK: - Header Section
     
     private var headerSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 20) {
             // 아이콘
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 80, height: 80)
+                    .fill(AppColors.primaryAccent.opacity(0.1))
+                    .frame(width: 100, height: 100)
                 
                 Image(systemName: store.isPlaying && !store.isPaused ? "waveform" : "waveform.circle")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 48))
+                    .foregroundStyle(AppColors.primaryAccent)
                     .symbolEffect(.variableColor.iterative, isActive: store.isPlaying && !store.isPaused)
             }
             
             // 파일 정보
-            VStack(spacing: 4) {
-                Text(store.recording.formattedDate)
-                    .font(.headline)
+            VStack(spacing: 8) {
+                // 파일 제목 (타이틀로 변경)
+                Text(store.recording.fileName)
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
                 
-                Text(store.recording.formattedDuration)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                // 날짜 (서브타이틀로 변경)
+                Text(store.recording.formattedDate)
+                    .font(.body)
+                    .foregroundStyle(.white.opacity(0.6))
             }
         }
         .padding(.vertical, 24)
@@ -84,38 +88,41 @@ struct PlaybackView: View {
     // MARK: - Control Section
     
     private var controlSection: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 32) {
             // SeekBar
             if let playbackState = store.playbackState {
                 SeekBar(
                     currentTime: playbackState.currentTime,
                     duration: playbackState.duration,
-                    onSeek: { store.send(.seekTo($0)) }
+                    onSeek: { store.send(.seekTo($0)) },
+                    tintColor: AppColors.primaryAccent
                 )
             } else {
                 SeekBar(
                     currentTime: 0,
                     duration: store.recording.duration,
-                    onSeek: { _ in }
+                    onSeek: { _ in },
+                    tintColor: AppColors.primaryAccent
                 )
                 .opacity(0.5)
                 .disabled(true)
             }
             
             // 컨트롤 버튼
-            HStack(spacing: 48) {
+            HStack(spacing: 40) {
                 // 정지 버튼
                 Button {
                     store.send(.stopTapped)
                 } label: {
                     Image(systemName: "stop.fill")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                        .frame(width: 52, height: 52)
-                        .background(Color(.systemGray6))
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.white.opacity(0.1))
                         .clipShape(Circle())
                 }
                 .disabled(!store.isPlaying && !store.isPaused)
+                .opacity((!store.isPlaying && !store.isPaused) ? 0.5 : 1)
                 
                 // 재생/일시정지 버튼
                 Button {
@@ -128,12 +135,12 @@ struct PlaybackView: View {
                     }
                 } label: {
                     Image(systemName: playPauseIcon)
-                        .font(.title)
+                        .font(.largeTitle)
                         .foregroundStyle(.white)
-                        .frame(width: 72, height: 72)
-                        .background(Color.blue)
+                        .frame(width: 80, height: 80)
+                        .background(AppColors.primaryAccent) // Primary Accent 사용
                         .clipShape(Circle())
-                        .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .shadow(color: AppColors.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 4)
                 }
                 
                 // 닫기 버튼
@@ -141,10 +148,10 @@ struct PlaybackView: View {
                     store.send(.dismissTapped)
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                        .frame(width: 52, height: 52)
-                        .background(Color(.systemGray6))
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.white.opacity(0.1))
                         .clipShape(Circle())
                 }
             }

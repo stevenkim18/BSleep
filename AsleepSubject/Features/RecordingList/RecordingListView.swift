@@ -13,19 +13,28 @@ struct RecordingListView: View {
     @Bindable var store: StoreOf<RecordingListFeature>
     
     var body: some View {
-        Group {
-            if store.isLoading {
-                loadingView
-            } else if let errorMessage = store.errorMessage {
-                errorView(message: errorMessage)
-            } else if store.recordings.isEmpty {
-                emptyView
-            } else {
-                listView
+        ZStack {
+            // 배경 그라데이션
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
+            
+            Group {
+                if store.isLoading {
+                    loadingView
+                } else if let errorMessage = store.errorMessage {
+                    errorView(message: errorMessage)
+                } else if store.recordings.isEmpty {
+                    emptyView
+                } else {
+                    listView
+                }
             }
         }
         .navigationTitle("녹음 목록")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppColors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .onAppear {
             store.send(.onAppear)
         }
@@ -39,18 +48,30 @@ struct RecordingListView: View {
     // MARK: - Loading View
     
     private var loadingView: some View {
-        ProgressView("녹음 목록 불러오는 중...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(.white)
+                .scaleEffect(1.2)
+            
+            Text("녹음 목록 불러오는 중...")
+                .font(.callout)
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     // MARK: - Empty View
     
     private var emptyView: some View {
-        ContentUnavailableView(
-            "녹음 파일 없음",
-            systemImage: "waveform",
-            description: Text("녹음 버튼을 눌러 첫 녹음을 시작하세요")
-        )
+        ContentUnavailableView {
+            Label("녹음 파일 없음", systemImage: "waveform")
+                .font(.largeTitle)
+                .foregroundStyle(AppColors.primaryAccent)
+        } description: {
+            Text("녹음 버튼을 눌러 첫 녹음을 시작하세요")
+                .font(.body)
+                .foregroundStyle(.white.opacity(0.7))
+        }
     }
     
     // MARK: - List View
@@ -63,72 +84,29 @@ struct RecordingListView: View {
             ) {
                 store.send(.recordingTapped(recording))
             }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
     
     // MARK: - Error View
     
     private func errorView(message: String) -> some View {
         ContentUnavailableView {
-            Label("오류 발생", systemImage: "exclamationmark.triangle")
+            Label("오류 발생", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
         } description: {
             Text(message)
+                .foregroundStyle(.white.opacity(0.9))
         } actions: {
             Button("다시 시도") {
                 store.send(.onAppear)
             }
             .buttonStyle(.borderedProminent)
+            .tint(AppColors.primaryAccent)
         }
-    }
-}
-
-// MARK: - RecordingRow (copied for now, will be moved later)
-
-/// 녹음 파일 목록의 각 행을 표시하는 컴포넌트
-struct RecordingRow: View {
-    let recording: Recording
-    let isPlaying: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // 재생 아이콘
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-                
-                // 파일 정보
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(recording.formattedDate)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    
-                    Text(recording.fileName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-                
-                // 재생 시간
-                Text(recording.formattedDuration)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                
-                // 화살표
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -166,6 +144,18 @@ struct RecordingRow: View {
         RecordingListView(
             store: Store(
                 initialState: RecordingListFeature.State(isLoading: true)
+            ) {
+                EmptyReducer()
+            }
+        )
+    }
+}
+
+#Preview("Error") {
+    NavigationStack {
+        RecordingListView(
+            store: Store(
+                initialState: RecordingListFeature.State(errorMessage: "데이터를 불러올 수 없습니다.")
             ) {
                 EmptyReducer()
             }

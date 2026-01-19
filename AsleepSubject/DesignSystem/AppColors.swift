@@ -31,6 +31,17 @@ enum AppColors {
     
     /// 프라이머리 액센트 컬러
     static let primaryAccent = Color(hex: "8B5CF6")
+    
+    // MARK: - 텍스트 색상
+    
+    /// 주요 텍스트 (흰색)
+    static let textPrimary = Color.white
+    
+    /// 보조 텍스트 (60% 투명도)
+    static let textSecondary = Color.white.opacity(0.6)
+    
+    /// 3차 텍스트 (40% 투명도)
+    static let textTertiary = Color.white.opacity(0.4)
 }
 
 // MARK: - Convenience
