@@ -76,6 +76,30 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     }
 }
 
+// MARK: - Mock Implementation for Previews
+
+#if DEBUG
+/// Preview/Test용 Mock 구현체
+struct MockRecordingStorageClient: RecordingStorageClientProtocol {
+    var recordings: [RecordingEntity] = []
+    var shouldFail: Bool = false
+    
+    func fetchRecordings() async throws -> [RecordingEntity] {
+        if shouldFail {
+            throw NSError(domain: "MockError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Mock fetch failed"])
+        }
+        return recordings
+    }
+    
+    func deleteRecording(_ recording: RecordingEntity) async throws {
+        if shouldFail {
+            throw NSError(domain: "MockError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Mock delete failed"])
+        }
+        // Do nothing in mock
+    }
+}
+#endif
+
 // MARK: - Dependency Key
 
 private enum RecordingStorageClientKey: DependencyKey {
@@ -90,3 +114,4 @@ extension DependencyValues {
         set { self[RecordingStorageClientKey.self] = newValue }
     }
 }
+

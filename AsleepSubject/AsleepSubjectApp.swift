@@ -12,9 +12,13 @@ import SwiftUI
 struct AsleepSubjectApp: App {
     var body: some Scene {
         WindowGroup {
-            RecordingView(
-                store: Store(initialState: RecordingFeature.State()) {
-                    RecordingFeature()
+            TimelineView(
+                store: Store(initialState: TimelineFeature.State()) {
+                    TimelineFeature()
+                } withDependencies: {
+                    $0.recordingStorageClient = MockRecordingStorageClient(
+                        recordings: RecordingEntity.mockRecordings
+                    )
                 }
             )
         }
