@@ -30,7 +30,7 @@ struct TimelineFeature {
         // MARK: - 설정
         
         /// 레이아웃 설정
-        let config = TimelineConfig()
+        var config = TimelineConfig()
         
         // MARK: - 계산된 값
         

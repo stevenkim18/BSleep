@@ -9,8 +9,14 @@ import ComposableArchitecture
 import SwiftUI
 
 /// 타임라인 메인 뷰
+/// - 왼쪽 날짜 컬럼: 고정
+/// - 오른쪽 데이터 영역: 가로 스크롤
+/// - 상단 시간 헤더: 가로 스크롤과 동기화
 struct TimelineView: View {
     @Bindable var store: StoreOf<TimelineFeature>
+    
+    /// 가로 스크롤 오프셋 (헤더 동기화용)
+    @State private var horizontalScrollOffset: CGFloat = 0
     
     var body: some View {
         NavigationStack {
@@ -26,14 +32,7 @@ struct TimelineView: View {
                 } else if let errorMessage = store.errorMessage {
                     errorView(message: errorMessage)
                 } else {
-                    TimelineGraphView(
-                        config: store.config,
-                        dateRange: store.dateRange,
-                        recordingsByDate: store.recordingsByDate,
-                        onRecordingTapped: { recording in
-                            store.send(.recordingTapped(recording))
-                        }
-                    )
+                    timelineContent
                 }
             }
             .navigationTitle("수면 기록")
@@ -52,7 +51,81 @@ struct TimelineView: View {
         }
     }
     
-    // MARK: - Private Views
+    // MARK: - Timeline Content
+    
+    private var timelineContent: some View {
+        VStack(spacing: 0) {
+            // 상단: 시간 헤더
+            headerRow
+            
+            // 구분선
+            Rectangle()
+                .fill(AppColors.timelineGridLine)
+                .frame(height: 0.5)
+            
+            // 본문: 세로 스크롤
+            bodyContent
+        }
+    }
+    
+    /// 상단 헤더 행 (빈 공간 + 시간 헤더)
+    private var headerRow: some View {
+        HStack(spacing: 0) {
+            // 빈 공간 (날짜 컬럼 위치)
+            Color.clear
+                .frame(width: store.config.dateColumnWidth, height: store.config.headerHeight)
+            
+            // 구분선
+            Rectangle()
+                .fill(AppColors.timelineGridLine)
+                .frame(width: 0.5, height: store.config.headerHeight)
+            
+            // 시간 헤더 (가로 스크롤 동기화)
+            GeometryReader { _ in
+                TimelineHeaderView(config: store.config)
+                    .offset(x: -horizontalScrollOffset)
+            }
+            .frame(height: store.config.headerHeight)
+            .clipped()
+        }
+    }
+    
+    /// 본문 영역 (날짜 컬럼 + 데이터 영역)
+    private var bodyContent: some View {
+        ScrollView(.vertical, showsIndicators: true) {
+            HStack(alignment: .top, spacing: 0) {
+                // 날짜 컬럼 (고정)
+                TimelineDateColumnView(
+                    config: store.config,
+                    dates: store.dateRange
+                )
+                
+                // 구분선
+                Rectangle()
+                    .fill(AppColors.timelineGridLine)
+                    .frame(width: 0.5)
+                
+                // 데이터 영역 (가로 스크롤)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    TimelineContentView(
+                        config: store.config,
+                        dates: store.dateRange,
+                        recordingsByDate: store.recordingsByDate,
+                        onRecordingTapped: { recording in
+                            store.send(.recordingTapped(recording))
+                        }
+                    )
+                }
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentOffset.x
+                } action: { _, newValue in
+                    horizontalScrollOffset = newValue
+                }
+            }
+        }
+    }
+    
+    // MARK: - Error View
     
     @ViewBuilder
     private func errorView(message: String) -> some View {
@@ -106,7 +179,6 @@ struct TimelineView: View {
         store: Store(
             initialState: TimelineFeature.State(isLoading: true)
         ) {
-            // Reducer를 빈 Reduce로 대체하여 onAppear 무시
             EmptyReducer()
         }
     )
@@ -122,4 +194,3 @@ struct TimelineView: View {
     )
 }
 #endif
-

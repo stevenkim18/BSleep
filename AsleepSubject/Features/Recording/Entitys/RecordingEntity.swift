@@ -74,15 +74,15 @@ extension RecordingEntity {
             // Case 2: 늦은 취침 (8시간)
             .mock(
                 daysAgo: 1,
-                startHour: 1, startMinute: 0,
-                endHour: 9, endMinute: 0
+                startHour: 22, startMinute: 0,
+                endHour: 1, endMinute: 0
             ),
             
             // Case 3: 이른 취침 + 낮잠
             .mock(
                 daysAgo: 2,
-                startHour: 22, startMinute: 0,
-                endHour: 5, endMinute: 30
+                startHour: 23, startMinute: 0,
+                endHour: 1, endMinute: 30
             ),
             .mock(  // 낮잠
                 daysAgo: 2,
@@ -93,8 +93,8 @@ extension RecordingEntity {
             // Case 4: 짧은 수면 (4시간)
             .mock(
                 daysAgo: 3,
-                startHour: 2, startMinute: 0,
-                endHour: 6, endMinute: 0
+                startHour: 18, startMinute: 0,
+                endHour: 21, endMinute: 0
             ),
             
             // Case 5: 긴 수면 (10시간)

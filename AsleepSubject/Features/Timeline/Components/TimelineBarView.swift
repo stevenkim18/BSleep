@@ -8,6 +8,7 @@
 import SwiftUI
 
 /// 개별 녹음을 나타내는 바 뷰
+/// - 시간 레이블 중앙을 기준으로 위치 계산
 struct TimelineBarView: View {
     let config: TimelineConfig
     let recording: RecordingEntity
@@ -32,7 +33,7 @@ struct TimelineBarView: View {
             .overlay {
                 timeLabel(for: barWidth)
             }
-            .offset(x: xPosition + displayWidth / 2)
+            .offset(x: xPosition)
     }
     
     // MARK: - Private Views
@@ -64,26 +65,31 @@ struct TimelineBarView: View {
     // MARK: - Private Methods
     
     /// 시작 시간을 X 좌표로 변환
+    /// - 시간 레이블의 중앙을 기준으로 계산
+    /// - 첫 번째 레이블 "21:00"이 labelSpacing/2 위치에 중앙 정렬되므로 오프셋 추가
     private func calculateXPosition() -> CGFloat {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: recording.startedAt)
-        let minute = calendar.component(.minute, from: recording.startedAt)
-        
-        var hoursFromStart = hour - config.startHour
-        if hoursFromStart < 0 {
-            hoursFromStart += 24  // 다음날로 wrap
-        }
-        
-        let totalMinutes = Double(hoursFromStart * 60 + minute)
-        let hoursElapsed = totalMinutes / 60.0
-        
-        return CGFloat(hoursElapsed) * config.hourWidth
+        let hoursFromStart = hoursFrom(date: recording.startedAt)
+        // labelSpacing/2 = 첫 번째 시간 텍스트 중앙 위치
+        return CGFloat(hoursFromStart) * config.hourWidth + config.labelSpacing / 2
     }
     
     /// 녹음 시간을 바 너비로 변환
     private func calculateBarWidth() -> CGFloat {
         let durationHours = recording.duration / 3600.0
         return CGFloat(durationHours) * config.hourWidth
+    }
+    
+    /// startHour 기준 경과 시간 계산
+    private func hoursFrom(date: Date) -> Double {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        
+        var hoursFromStart = Double(hour - config.startHour)
+        if hoursFromStart < 0 {
+            hoursFromStart += 24
+        }
+        return hoursFromStart + Double(minute) / 60.0
     }
     
     /// 시간 포맷팅 (HH:mm)
@@ -97,14 +103,14 @@ struct TimelineBarView: View {
 // MARK: - Previews
 
 #if DEBUG
-#Preview("TimelineBarView - 텍스트 표시 케이스") {
+#Preview("TimelineBarView - 다양한 너비") {
     let config = TimelineConfig()
     
     ScrollView(.horizontal) {
         VStack(alignment: .leading, spacing: 16) {
-            // Case 1: 넓은 바 (≥100pt) - 시작/종료 시간 모두 표시
+            // 넓은 바 (10시간)
             Group {
-                Text("넓은 바 (10시간 = 300pt) → 시작-종료 표시")
+                Text("넓은 바 (10시간) → 시작-종료 표시")
                     .font(.caption)
                     .foregroundStyle(.gray)
                 ZStack(alignment: .leading) {
@@ -117,9 +123,9 @@ struct TimelineBarView: View {
                 .frame(width: config.totalTimeWidth, height: config.rowHeight)
             }
             
-            // Case 2: 중간 바 (≥60pt, <100pt) - 시작 시간만 표시
+            // 중간 바 (2.5시간)
             Group {
-                Text("중간 바 (2.5시간 = 75pt) → 시작 시간만 표시")
+                Text("중간 바 (2.5시간)")
                     .font(.caption)
                     .foregroundStyle(.gray)
                 ZStack(alignment: .leading) {
@@ -132,75 +138,35 @@ struct TimelineBarView: View {
                 .frame(width: config.totalTimeWidth, height: config.rowHeight)
             }
             
-            // Case 3: 좁은 바 (<60pt) - 텍스트 없음
+            // 중간 바 (1.5시간)
             Group {
-                Text("좁은 바 (1.5시간 = 45pt) → 텍스트 없음")
+                Text("중간 바 (1.5시간)")
                     .font(.caption)
                     .foregroundStyle(.gray)
                 ZStack(alignment: .leading) {
                     Rectangle().fill(Color.clear)
                     TimelineBarView(
                         config: config,
-                        recording: .mock(daysAgo: 0, startHour: 2, startMinute: 0, endHour: 3, endMinute: 30)
+                        recording: .mock(daysAgo: 0, startHour: 1, startMinute: 0, endHour: 2, endMinute: 30)
                     )
                 }
                 .frame(width: config.totalTimeWidth, height: config.rowHeight)
             }
             
-            // Case 4: 아주 좁은 바 (<20pt) - 최소 너비 적용
+            // 좁은 바 (1시간)
             Group {
-                Text("아주 좁은 바 (30분 = 15pt) → 최소 너비 20pt")
+                Text("좁은 바 (1시간) → 텍스트 없음")
                     .font(.caption)
                     .foregroundStyle(.gray)
                 ZStack(alignment: .leading) {
                     Rectangle().fill(Color.clear)
                     TimelineBarView(
                         config: config,
-                        recording: .mock(daysAgo: 0, startHour: 1, startMinute: 0, endHour: 1, endMinute: 30)
+                        recording: .mock(daysAgo: 0, startHour: 2, startMinute: 0, endHour: 3, endMinute: 0)
                     )
                 }
                 .frame(width: config.totalTimeWidth, height: config.rowHeight)
             }
-        }
-        .padding()
-    }
-    .background(AppColors.background)
-}
-
-#Preview("TimelineBarView - 다양한 수면 시간") {
-    let config = TimelineConfig()
-    
-    ScrollView(.horizontal) {
-        VStack(alignment: .leading, spacing: 20) {
-            // 짧은 수면 (4시간)
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Color.clear)
-                TimelineBarView(
-                    config: config,
-                    recording: .mock(daysAgo: 0, startHour: 2, startMinute: 0, endHour: 6, endMinute: 0)
-                )
-            }
-            .frame(width: config.totalTimeWidth, height: config.rowHeight)
-            
-            // 일반 수면 (7시간)
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Color.clear)
-                TimelineBarView(
-                    config: config,
-                    recording: .mock(daysAgo: 0, startHour: 23, startMinute: 30, endHour: 6, endMinute: 30)
-                )
-            }
-            .frame(width: config.totalTimeWidth, height: config.rowHeight)
-            
-            // 긴 수면 (10시간)
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Color.clear)
-                TimelineBarView(
-                    config: config,
-                    recording: .mock(daysAgo: 0, startHour: 22, startMinute: 0, endHour: 8, endMinute: 0)
-                )
-            }
-            .frame(width: config.totalTimeWidth, height: config.rowHeight)
         }
         .padding()
     }
