@@ -35,6 +35,36 @@ struct RecordingListView: View {
         .toolbarBackground(AppColors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        #if DEBUG
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Section("🛠️ 디버그") {
+                        Button {
+                            store.send(.createEmptyWavTapped)
+                        } label: {
+                            Label("빈 WAV 생성 (복구 실패)", systemImage: "doc.badge.plus")
+                        }
+                        
+                        Button {
+                            store.send(.createIncompleteWavTapped)
+                        } label: {
+                            Label("불완전 WAV 생성 (복구 가능)", systemImage: "doc.badge.ellipsis")
+                        }
+                        
+                        Button {
+                            store.send(.copyBigWavTapped)
+                        } label: {
+                            Label("5GB big.wav 복사", systemImage: "doc.on.doc")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        #endif
         .onAppear {
             store.send(.onAppear)
         }

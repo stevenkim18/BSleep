@@ -50,6 +50,14 @@ struct RecordingListFeature {
         
         // 에러
         case errorOccurred(String)
+        
+        // 디버그
+        #if DEBUG
+        case createEmptyWavTapped
+        case createIncompleteWavTapped
+        case copyBigWavTapped
+        case debugFileCreated
+        #endif
     }
     
     @Dependency(\.recordingStorageClient) var recordingStorageClient
@@ -112,6 +120,11 @@ struct RecordingListFeature {
                 // 목록 새로고침
                 return .send(.onAppear)
                 
+            case .conversion(.presented(.delegate(.fileDeleted))):
+                state.conversion = nil
+                // 파일 삭제 후 목록 새로고침
+                return .send(.onAppear)
+                
             case .conversion(.presented(.delegate(.dismissed))):
                 state.conversion = nil
                 // 목록 새로고침 (변환 실패 후 닫기 시에도)
@@ -124,6 +137,63 @@ struct RecordingListFeature {
                 state.isLoading = false
                 state.errorMessage = message
                 return .none
+                
+            #if DEBUG
+            case .createEmptyWavTapped:
+                return .run { send in
+                    let client = LiveWavRecoveryClient()
+                    _ = try? await client.createEmptyWavForTesting()
+                    await send(.debugFileCreated)
+                }
+                
+            case .createIncompleteWavTapped:
+                return .run { send in
+                    let client = LiveWavRecoveryClient()
+                    _ = try? await client.createIncompleteWavForTesting()
+                    await send(.debugFileCreated)
+                }
+                
+            case .copyBigWavTapped:
+                return .run { send in
+                    // 프로젝트 루트의 big.wav (시뮬레이터에서만 동작)
+                    // 실 기기에서는 Bundle에 포함해야 함
+                    #if targetEnvironment(simulator)
+                    let projectPath = "/Users/seungwookim/Code/subject/AsleepSubject/AsleepSubject/big.wav"
+                    let sourceURL = URL(fileURLWithPath: projectPath)
+                    #else
+                    guard let sourceURL = Bundle.main.url(forResource: "big", withExtension: "wav") else {
+                        print("❌ big.wav not found in bundle")
+                        return
+                    }
+                    #endif
+                    
+                    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+                        print("❌ big.wav not found at: \(sourceURL.path)")
+                        return
+                    }
+                    
+                    guard let documentsURL = FileManager.default
+                        .urls(for: .documentDirectory, in: .userDomainMask)
+                        .first else {
+                        return
+                    }
+                    
+                    let destURL = documentsURL.appendingPathComponent("big_\(Date().timeIntervalSince1970).wav")
+                    
+                    do {
+                        try FileManager.default.copyItem(at: sourceURL, to: destURL)
+                        print("✅ Copied big.wav to: \(destURL.path)")
+                    } catch {
+                        print("❌ Copy failed: \(error)")
+                    }
+                    
+                    await send(.debugFileCreated)
+                }
+                
+            case .debugFileCreated:
+                // 목록 새로고침
+                return .send(.onAppear)
+            #endif
             }
         }
         .ifLet(\.$playback, action: \.playback) {

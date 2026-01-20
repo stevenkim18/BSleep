@@ -12,130 +12,227 @@ import Foundation
 
 private enum ConversionCancelID: Hashable {
     case conversion
+    case recovery
 }
 
 // MARK: - Feature
 
 @Reducer
 struct ConversionFeature {
-    
+
     @ObservableState
     struct State: Equatable {
         /// WAV 파일 경로
         let sourceURL: URL
         /// M4A 파일 경로
         let destinationURL: URL
-        /// 변환 진행률 (0.0 ~ 1.0)
-        var progress: Float = 0
-        /// 에러 메시지 (nil이면 에러 없음)
-        var error: String? = nil
+        
+        /// 현재 진행 단계
+        enum Phase: Equatable {
+            case converting(progress: Float)    // 변환 중
+            case conversionFailed(String)       // 변환 실패
+            case recovering                     // 복구 중
+            case recoveryCompleted              // 복구 성공 (사용자 확인 대기)
+            case recoveryFailed(String)         // 복구 실패
+            case completed                      // 완료
+        }
+        
+        var phase: Phase = .converting(progress: 0)
+        
+        // MARK: - Computed Properties
+        
+        /// 변환 진행률 (Phase가 converting일 때만 의미 있음)
+        var progress: Float {
+            if case .converting(let progress) = phase {
+                return progress
+            }
+            return 0
+        }
+        
+        /// 에러 메시지 (변환/복구 실패 시)
+        var errorMessage: String? {
+            switch phase {
+            case .conversionFailed(let message), .recoveryFailed(let message):
+                return message
+            default:
+                return nil
+            }
+        }
+        
         /// 변환 완료 여부
-        var isCompleted: Bool = false
+        var isCompleted: Bool {
+            phase == .completed
+        }
+        
+        /// 복구 실패 여부
+        var isRecoveryFailed: Bool {
+            if case .recoveryFailed = phase {
+                return true
+            }
+            return false
+        }
     }
     
     enum Action: Equatable {
-        /// 변환 시작
+        // 변환 관련
         case startConversion
-        /// 진행률 업데이트
         case progressUpdated(Float)
-        /// 변환 완료
-        case completed
-        /// 변환 실패
-        case failed(String)
-        /// 재시도 버튼 탭
+        case conversionCompleted
+        case conversionFailed(String)
         case retryTapped
-        /// 확인 버튼 탭 (완료 화면에서)
-        case confirmTapped
-        /// 닫기 버튼 탭 (에러 화면에서)
-        case closeTapped
-        /// Delegate 액션
+        
+        // 복구 관련
+        case recoveryTapped
+        case recoveryCompleted
+        case recoveryFailed(String)
+        case continueConversionTapped   // 복구 성공 화면에서 변환 계속
+        
+        // UI 액션
+        case confirmTapped          // 완료 화면에서 확인
+        case closeTapped            // 에러 화면에서 닫기
+        case deleteTapped           // 복구 실패 시 삭제
+        
+        // Delegate
         case delegate(Delegate)
         
         @CasePathable
         enum Delegate: Equatable {
-            /// 변환 완료 (M4A URL 전달)
-            case conversionCompleted(URL)
-            /// 취소됨
-            case dismissed
+            case conversionCompleted(URL)   // 변환 완료 (M4A URL)
+            case fileDeleted                // 파일 삭제됨
+            case dismissed                  // 취소됨
         }
     }
     
     @Dependency(\.audioConverterClient) var audioConverterClient
+    @Dependency(\.wavRecoveryClient) var wavRecoveryClient
     
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case .startConversion:
-                state.error = nil
-                state.progress = 0
-                state.isCompleted = false
                 
-                // 최소 프로그래스 표시 시간 (1.5초)
-                let minimumDuration: TimeInterval = 1.5
+            // MARK: - Conversion
+                
+            case .startConversion:
+                state.phase = .converting(progress: 0)
                 
                 return .run { [source = state.sourceURL, dest = state.destinationURL] send in
-                    let startTime = Date()
-                    
                     do {
-                        let progressStream = try await audioConverterClient.convert(
-                            from: source,
-                            to: dest
-                        )
-                        
-                        for await progress in progressStream {
-                            await send(.progressUpdated(progress))
-                        }
-                        
-                        // 최소 시간 확보
-                        let elapsed = Date().timeIntervalSince(startTime)
-                        if elapsed < minimumDuration {
-                            let remaining = minimumDuration - elapsed
-                            try? await Task.sleep(for: .seconds(remaining))
+                        try await Self.withMinimumDuration {
+                            let progressStream = try await audioConverterClient.convert(
+                                from: source,
+                                to: dest
+                            )
+                            
+                            for await progress in progressStream {
+                                await send(.progressUpdated(progress))
+                            }
                         }
                         
                         // 파일 존재 여부로 성공/실패 판단
                         if FileManager.default.fileExists(atPath: dest.path) {
-                            // 성공: WAV 파일 삭제
                             try? FileManager.default.removeItem(at: source)
-                            await send(.completed)
+                            await send(.conversionCompleted)
                         } else {
-                            await send(.failed("변환된 파일을 찾을 수 없습니다."))
+                            await send(.conversionFailed("변환된 파일을 찾을 수 없습니다."))
                         }
                     } catch {
-                        await send(.failed(error.localizedDescription))
+                        await send(.conversionFailed(error.localizedDescription))
                     }
                 }
                 .cancellable(id: ConversionCancelID.conversion, cancelInFlight: true)
                 
             case .progressUpdated(let value):
-                state.progress = value
+                state.phase = .converting(progress: value)
                 return .none
                 
-            case .completed:
-                state.isCompleted = true
-                state.progress = 1.0
-                // 완료 화면 표시 (delegate는 confirmTapped에서 전송)
-                // 파일 삭제는 Effect에서 이미 처리됨
+            case .conversionCompleted:
+                state.phase = .completed
                 return .none
                 
-            case .failed(let message):
-                state.error = message
+            case .conversionFailed(let message):
+                state.phase = .conversionFailed(message)
                 return .none
                 
             case .retryTapped:
                 return .send(.startConversion)
                 
+            // MARK: - Recovery
+                
+            case .recoveryTapped:
+                state.phase = .recovering
+                
+                return .run { [source = state.sourceURL] send in
+                    do {
+                        let success = try await Self.withMinimumDuration {
+                            try await wavRecoveryClient.recover(fileURL: source)
+                        }
+                        
+                        if success {
+                            await send(.recoveryCompleted)
+                        } else {
+                            await send(.recoveryFailed("복구할 수 없는 파일입니다."))
+                        }
+                    } catch {
+                        await send(.recoveryFailed(error.localizedDescription))
+                    }
+                }
+                .cancellable(id: ConversionCancelID.recovery, cancelInFlight: true)
+                
+            case .recoveryCompleted:
+                // 복구 성공 → 사용자에게 확인 화면 표시
+                state.phase = .recoveryCompleted
+                return .none
+                
+            case .continueConversionTapped:
+                // 복구 성공 화면에서 변환 계속 버튼 탭
+                return .send(.startConversion)
+                
+            case .recoveryFailed(let message):
+                state.phase = .recoveryFailed(message)
+                return .none
+                
+            // MARK: - UI Actions
+                
             case .confirmTapped:
-                // 확인 버튼 탭 → delegate 전송
                 return .send(.delegate(.conversionCompleted(state.destinationURL)))
                 
             case .closeTapped:
-                // 닫기 버튼 탭 → dismissed delegate 전송
                 return .send(.delegate(.dismissed))
+                
+            case .deleteTapped:
+                // 파일 삭제
+                return .run { [source = state.sourceURL] send in
+                    try? FileManager.default.removeItem(at: source)
+                    await send(.delegate(.fileDeleted))
+                }
                 
             case .delegate:
                 return .none
             }
         }
+    }
+
+    // MARK: - Constants
+    
+    /// 로딩 화면 최소 표시 시간
+    private static let minimumLoadingDuration: TimeInterval = 1.5
+    
+    // MARK: - Helper
+    
+    /// 최소 시간을 보장하면서 작업 수행
+    private static func withMinimumDuration<T>(
+        _ duration: TimeInterval = minimumLoadingDuration,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
+        let startTime = Date()
+        let result = try await operation()
+        
+        let elapsed = Date().timeIntervalSince(startTime)
+        if elapsed < duration {
+            let remaining = duration - elapsed
+            try? await Task.sleep(for: .seconds(remaining))
+        }
+        
+        return result
     }
 }

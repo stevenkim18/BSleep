@@ -72,28 +72,30 @@ actor LiveAudioConverterClient: AudioConverterClientProtocol {
         return AsyncStream { continuation in
             Task {
                 // 변환 시작 (비동기)
-                Task {
+                let exportTask = Task {
                     await exportSession.export()
                 }
                 
+                // Export가 시작될 때까지 대기
+                while exportSession.status == .unknown || exportSession.status == .waiting {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                
                 // 진행률 모니터링
-                while exportSession.status == .waiting || exportSession.status == .exporting {
+                while exportSession.status == .exporting {
                     continuation.yield(exportSession.progress)
                     try? await Task.sleep(for: .milliseconds(100))
                 }
+                
+                // exportTask가 완료될 때까지 대기
+                await exportTask.value
                 
                 // 최종 결과 처리
                 switch exportSession.status {
                 case .completed:
                     continuation.yield(1.0)
                     continuation.finish()
-                case .failed:
-                    // 에러 정보를 스트림 종료 전에 기록
-                    let errorMessage = exportSession.error?.localizedDescription ?? "알 수 없는 오류"
-                    // AsyncStream은 에러를 throw할 수 없으므로 finish만 호출
-                    // 에러는 ConversionFeature에서 파일 존재 여부로 판단
-                    continuation.finish()
-                case .cancelled:
+                case .failed, .cancelled:
                     continuation.finish()
                 default:
                     continuation.finish()

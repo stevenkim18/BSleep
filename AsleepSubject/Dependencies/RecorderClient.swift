@@ -84,9 +84,9 @@ actor LiveRecorderClient: RecorderClientProtocol {
         // WAV 형식은 finalize 없이도 복구 가능하여 앱 비정상 종료 시에도 데이터 보존 가능
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: 44100.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
+            AVSampleRateKey: AudioSettings.sampleRate,
+            AVNumberOfChannelsKey: AudioSettings.numberOfChannels,
+            AVLinearPCMBitDepthKey: AudioSettings.bitsPerSample,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false
         ]
