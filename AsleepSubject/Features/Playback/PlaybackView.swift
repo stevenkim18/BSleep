@@ -32,9 +32,6 @@ struct PlaybackView: View {
         .onAppear {
             store.send(.onAppear)
         }
-        .onDisappear {
-            store.send(.onDisappear)
-        }
         .overlay {
             if let errorMessage = store.errorMessage {
                 errorOverlay(message: errorMessage)

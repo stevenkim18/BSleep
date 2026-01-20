@@ -35,7 +35,6 @@ struct PlaybackFeature {
     enum Action {
         // 라이프사이클
         case onAppear
-        case onDisappear
         
         // 재생 컨트롤
         case playTapped
@@ -68,16 +67,6 @@ struct PlaybackFeature {
             case .onAppear:
                 // 자동 재생 시작
                 return .send(.playTapped)
-                
-            case .onDisappear:
-                // 화면 사라질 때 재생 정지
-                return .merge(
-                    .cancel(id: PlaybackCancelID.playback),
-                    .cancel(id: PlaybackCancelID.stateUpdates),
-                    .run { _ in
-                        await playerClient.stop()
-                    }
-                )
                 
             case .playTapped:
                 guard !state.isPlaying else { return .none }
@@ -168,7 +157,15 @@ struct PlaybackFeature {
                 )
                 
             case .dismissTapped:
-                return .send(.delegate(.dismiss))
+                // Cleanup before dismiss
+                return .merge(
+                    .cancel(id: PlaybackCancelID.playback),
+                    .cancel(id: PlaybackCancelID.stateUpdates),
+                    .run { _ in
+                        await playerClient.stop()
+                    },
+                    .send(.delegate(.dismiss))
+                )
                 
             case .delegate:
                 return .none

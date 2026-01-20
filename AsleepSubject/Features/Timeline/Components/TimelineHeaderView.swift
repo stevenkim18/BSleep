@@ -15,7 +15,7 @@ struct TimelineHeaderView: View {
     
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(config.timeLabels, id: \.self) { hour in
+            ForEach(Array(config.timeLabels.enumerated()), id: \.offset) { _, hour in
                 Text(String(format: "%02d:00", hour))
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.6))
