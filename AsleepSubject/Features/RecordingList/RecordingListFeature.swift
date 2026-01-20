@@ -12,7 +12,7 @@ import Foundation
 struct RecordingListFeature {
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         /// 녹음 목록
         var recordings: [Recording] = []
         

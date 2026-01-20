@@ -19,7 +19,7 @@ private enum RecordingCancelID: Hashable, Sendable {
 struct RecordingFeature {
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         // 녹음 상태
         var isRecording = false
         var permissionGranted: Bool?

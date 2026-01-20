@@ -12,7 +12,7 @@ import Foundation
 struct TimelineFeature {
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         // MARK: - 데이터
         
         /// 녹음 목록

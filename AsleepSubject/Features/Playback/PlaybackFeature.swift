@@ -19,7 +19,7 @@ private enum PlaybackCancelID: Hashable, Sendable {
 struct PlaybackFeature {
     
     @ObservableState
-    struct State {
+    struct State: Equatable {
         /// 재생할 녹음 파일
         let recording: Recording
         

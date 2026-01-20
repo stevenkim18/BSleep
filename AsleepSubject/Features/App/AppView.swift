@@ -11,10 +11,45 @@ import SwiftUI
 /// 앱 루트 뷰 (NavigationStack 컨테이너)
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
+        Group {
+            switch store.screen {
+            case .splash:
+                SplashView()
+                    .transition(.opacity)
+                
+            case .onboarding:
+                OnboardingView {
+                    store.send(.requestPermissionTapped)
+                }
+                .transition(.opacity)
+                
+            case .permissionDenied:
+                PermissionDeniedView {
+                    store.send(.openSettingsTapped)
+                }
+                .transition(.opacity)
+                
+            case .main:
+                mainView
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: store.screen)
+        .onAppear {
+            store.send(.onAppear)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            store.send(.scenePhaseChanged(isActive: newPhase == .active))
+        }
+    }
+    
+    // MARK: - Main View
+    
+    private var mainView: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-            // 루트: 녹음 화면
             RecordingView(
                 store: store.scope(state: \.recording, action: \.recording),
                 onNavigateToList: { store.send(.navigateToRecordingList) },
@@ -35,11 +70,36 @@ struct AppView: View {
 // MARK: - Previews
 
 #if DEBUG
-#Preview {
+#Preview("Splash") {
     AppView(
-        store: Store(initialState: AppFeature.State()) {
+        store: Store(initialState: AppFeature.State(screen: .splash)) {
+            AppFeature()
+        }
+    )
+}
+
+#Preview("Onboarding") {
+    AppView(
+        store: Store(initialState: AppFeature.State(screen: .onboarding)) {
+            AppFeature()
+        }
+    )
+}
+
+#Preview("Permission Denied") {
+    AppView(
+        store: Store(initialState: AppFeature.State(screen: .permissionDenied)) {
+            AppFeature()
+        }
+    )
+}
+
+#Preview("Main") {
+    AppView(
+        store: Store(initialState: AppFeature.State(screen: .main)) {
             AppFeature()
         }
     )
 }
 #endif
+
