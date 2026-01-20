@@ -23,7 +23,7 @@ struct AppFeature {
     // MARK: - State
     
     @ObservableState
-    struct State: Equatable {
+    struct State {
         var screen: Screen = .splash
         var permissionStatus: PermissionStatus = .notDetermined
         var isSplashComplete = false
@@ -63,7 +63,7 @@ struct AppFeature {
     
     // MARK: - Path
     
-    @Reducer(state: .equatable)
+    @Reducer
     enum Path {
         case recordingList(RecordingListFeature)
         case timeline(TimelineFeature)

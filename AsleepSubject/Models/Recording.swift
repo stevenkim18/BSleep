@@ -7,12 +7,28 @@
 
 import Foundation
 
+// MARK: - Recording Model
+
 /// 녹음 파일 정보를 담는 모델
 struct Recording: Equatable, Identifiable {
+    
+    // MARK: - Format
+    
+    /// 녹음 파일 포맷
+    enum Format: String, Codable, Equatable {
+        /// 원본 WAV (변환 전)
+        case wav
+        /// M4A 변환 완료
+        case m4a
+    }
+    
+    // MARK: - Properties
+    
     let id: UUID
     let url: URL
     let startedAt: Date
     let endedAt: Date
+    let format: Format
     
     /// 녹음 길이 (초)
     var duration: TimeInterval {
@@ -181,7 +197,8 @@ extension Recording {
             id: UUID(),
             url: URL(fileURLWithPath: "/mock/recording_\(daysAgo).m4a"),
             startedAt: startDate,
-            endedAt: endDate
+            endedAt: endDate,
+            format: .m4a
         )
     }
 }

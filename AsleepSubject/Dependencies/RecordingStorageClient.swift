@@ -39,27 +39,35 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
                 at: documentsURL,
                 includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey]
             )
-            .filter { $0.pathExtension == "m4a" }
+            .filter { $0.pathExtension == "m4a" || $0.pathExtension == "wav" }
         
-        return files.compactMap { url -> Recording? in
+        // 비동기로 각 파일의 Recording 생성
+        var recordings: [Recording] = []
+        
+        for url in files {
             guard let attrs = try? fileManager.attributesOfItem(atPath: url.path),
                   let createdAt = attrs[.creationDate] as? Date else {
-                return nil
+                continue
             }
             
-            // endedAt은 수정일 또는 duration 기반으로 계산
-            let modifiedAt = attrs[.modificationDate] as? Date
-            let duration = getDuration(of: url)
-            let endedAt = modifiedAt ?? createdAt.addingTimeInterval(duration)
+            // 비동기로 duration 로드
+            let duration = await getDurationAsync(of: url)
+            let endedAt = createdAt.addingTimeInterval(duration)
             
-            return Recording(
+            // 확장자에서 포맷 결정
+            let format: Recording.Format = url.pathExtension == "wav" ? .wav : .m4a
+            
+            let recording = Recording(
                 id: UUID(),
                 url: url,
                 startedAt: createdAt,
-                endedAt: endedAt
+                endedAt: endedAt,
+                format: format
             )
+            recordings.append(recording)
         }
-        .sorted { $0.startedAt > $1.startedAt }
+        
+        return recordings.sorted { $0.startedAt > $1.startedAt }
     }
     
     func deleteRecording(_ recording: Recording) async throws {
@@ -68,11 +76,28 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     
     // MARK: - Private
     
-    private func getDuration(of url: URL) -> TimeInterval {
-        guard let player = try? AVAudioPlayer(contentsOf: url) else {
-            return 0
+    /// 비동기로 오디오 파일의 duration을 로드
+    private func getDurationAsync(of url: URL) async -> TimeInterval {
+        let asset = AVAsset(url: url)
+        
+        do {
+            // iOS 16+ 비동기 로딩
+            let duration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(duration)
+            
+            if seconds.isFinite && seconds > 0 {
+                return seconds
+            }
+        } catch {
+            // 로딩 실패 시 무시
         }
-        return player.duration
+        
+        // Fallback: AVAudioPlayer로 시도
+        if let player = try? AVAudioPlayer(contentsOf: url) {
+            return player.duration
+        }
+        
+        return 0
     }
 }
 

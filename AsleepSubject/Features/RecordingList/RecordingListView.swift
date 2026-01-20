@@ -43,6 +43,29 @@ struct RecordingListView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.hidden)
         }
+        // WAV 변환 확인 Alert
+        .alert(
+            "변환이 필요합니다",
+            isPresented: Binding(
+                get: { store.wavConversionAlert != nil },
+                set: { if !$0 { store.send(.cancelConversion) } }
+            )
+        ) {
+            Button("취소", role: .cancel) {
+                store.send(.cancelConversion)
+            }
+            Button("변환하기") {
+                store.send(.confirmConversion)
+            }
+        } message: {
+            Text("이 파일은 WAV 형식입니다.\nM4A로 변환하시겠습니까?")
+        }
+        // 변환 화면
+        .fullScreenCover(
+            item: $store.scope(state: \.conversion, action: \.conversion)
+        ) { conversionStore in
+            ConversionView(store: conversionStore)
+        }
     }
     
     // MARK: - Loading View

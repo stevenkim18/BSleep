@@ -80,12 +80,15 @@ actor LiveRecorderClient: RecorderClientProtocol {
             try session.setActive(true)
         }
         
-        // 녹음 설정
+        // 녹음 설정 (WAV - LinearPCM)
+        // WAV 형식은 finalize 없이도 복구 가능하여 앱 비정상 종료 시에도 데이터 보존 가능
         let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: 44100.0,
             AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false
         ]
         
         // 레코더 생성 및 시작

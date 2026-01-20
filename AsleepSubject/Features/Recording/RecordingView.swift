@@ -53,6 +53,11 @@ struct RecordingView: View {
             }
         }
         .preferredColorScheme(.dark) // 강제 다크 모드
+        .fullScreenCover(
+            item: $store.scope(state: \.destination?.conversion, action: \.destination.conversion)
+        ) { conversionStore in
+            ConversionView(store: conversionStore)
+        }
     }
     
     // MARK: - Navigation Buttons

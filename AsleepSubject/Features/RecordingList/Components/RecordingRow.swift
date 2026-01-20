@@ -12,27 +12,52 @@ struct RecordingRow: View {
     let isPlaying: Bool
     let onTap: () -> Void
     
+    /// WAV 파일 여부
+    private var isWav: Bool {
+        recording.format == .wav
+    }
+    
+    /// 아이콘 색상
+    private var iconColor: Color {
+        isWav ? .orange : AppColors.primaryAccent
+    }
+    
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
-                // 재생 아이콘 (배경 원 포함)
+                // 아이콘 (WAV: 경고, M4A: 재생)
                 ZStack {
                     Circle()
-                        .fill(AppColors.primaryAccent.opacity(0.2))
+                        .fill(iconColor.opacity(0.2))
                         .frame(width: 40, height: 40)
                     
-                    Image(systemName: "play.fill")
+                    Image(systemName: isWav ? "exclamationmark.triangle.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(AppColors.primaryAccent)
-                        .offset(x: 2) // 시각적 중심 보정
+                        .foregroundStyle(iconColor)
+                        .offset(x: isWav ? 0 : 2) // play 아이콘만 시각적 중심 보정
                 }
                 
                 // 파일 정보
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(recording.fileName)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(recording.fileName)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        
+                        // WAV 배지
+                        if isWav {
+                            Text("변환 필요")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.orange.opacity(0.2))
+                                )
+                        }
+                    }
                     
                     Text(recording.formattedDate)
                         .font(.caption)
@@ -44,7 +69,7 @@ struct RecordingRow: View {
                 
                 // 재생 시간
                 Text(recording.formattedDuration)
-                    .font(.caption.monospacedDigit()) // 모노스페이스 숫자
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.white.opacity(0.8))
                 
                 // 화살표
@@ -55,10 +80,10 @@ struct RecordingRow: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(isWav ? Color.orange.opacity(0.05) : Color.white.opacity(0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(isWav ? Color.orange.opacity(0.2) : Color.white.opacity(0.1), lineWidth: 1)
                     )
             )
             .contentShape(Rectangle())
@@ -82,7 +107,8 @@ struct RecordingRow: View {
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/recording_20260119_233015.m4a"),
                     startedAt: Date().addingTimeInterval(-3600), // 1시간
-                    endedAt: Date()
+                    endedAt: Date(),
+                    format: .m4a
                 ),
                 isPlaying: false
             ) {
@@ -104,7 +130,8 @@ struct RecordingRow: View {
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/recording_20260118_220000.m4a"),
                     startedAt: Date().addingTimeInterval(-10 * 3600), // 10시간 전
-                    endedAt: Date()
+                    endedAt: Date(),
+                    format: .m4a
                 ),
                 isPlaying: false
             ) {
@@ -126,7 +153,8 @@ struct RecordingRow: View {
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/short_nap.m4a"),
                     startedAt: Date().addingTimeInterval(-30 * 60), // 30분 전
-                    endedAt: Date()
+                    endedAt: Date(),
+                    format: .m4a
                 ),
                 isPlaying: false
             ) {
@@ -150,7 +178,8 @@ struct RecordingRow: View {
                         id: UUID(),
                         url: URL(fileURLWithPath: "/recordings/recording_20260119_233015.m4a"),
                         startedAt: Date().addingTimeInterval(-7 * 3600),
-                        endedAt: Date()
+                        endedAt: Date(),
+                        format: .m4a
                     ),
                     isPlaying: false
                 ) {
@@ -163,7 +192,8 @@ struct RecordingRow: View {
                         id: UUID(),
                         url: URL(fileURLWithPath: "/recordings/recording_20260118_020030.m4a"),
                         startedAt: Date().addingTimeInterval(-2 * 24 * 3600 - 5 * 3600),
-                        endedAt: Date().addingTimeInterval(-2 * 24 * 3600)
+                        endedAt: Date().addingTimeInterval(-2 * 24 * 3600),
+                        format: .m4a
                     ),
                     isPlaying: false
                 ) {
@@ -176,7 +206,8 @@ struct RecordingRow: View {
                         id: UUID(),
                         url: URL(fileURLWithPath: "/recordings/nap_20260117.m4a"),
                         startedAt: Date().addingTimeInterval(-3 * 24 * 3600 - 30 * 60),
-                        endedAt: Date().addingTimeInterval(-3 * 24 * 3600)
+                        endedAt: Date().addingTimeInterval(-3 * 24 * 3600),
+                        format: .m4a
                     ),
                     isPlaying: false
                 ) {

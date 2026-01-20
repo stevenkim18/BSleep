@@ -18,8 +18,17 @@ private enum RecordingCancelID: Hashable, Sendable {
 @Reducer
 struct RecordingFeature {
     
+    // MARK: - Destination
+    
+    @Reducer
+    enum Destination {
+        case conversion(ConversionFeature)
+    }
+    
+    // MARK: - State
+    
     @ObservableState
-    struct State: Equatable {
+    struct State {
         // 녹음 상태
         var isRecording = false
         
@@ -31,12 +40,20 @@ struct RecordingFeature {
         
         // 웨이브폼 샘플 (미터링)
         var meteringSamples: [Float] = []
+        
+        // 현재 녹음 중인 파일 URL (변환을 위해 저장)
+        var currentRecordingURL: URL? = nil
+        
+        // Destination
+        @Presents var destination: Destination.State?
     }
+    
+    // MARK: - Action
     
     enum Action {
         // 녹음
         case recordButtonTapped
-        case recordingStarted
+        case recordingStarted(URL)
         case recordingStopped(URL?)
         
         // 녹음 시간 업데이트
@@ -49,11 +66,18 @@ struct RecordingFeature {
         
         // 에러
         case errorOccurred(String)
+        
+        // Destination
+        case destination(PresentationAction<Destination.Action>)
     }
+    
+    // MARK: - Dependencies
     
     @Dependency(\.recorderClient) var recorderClient
     @Dependency(\.liveActivityClient) var liveActivityClient
     @Dependency(\.continuousClock) var clock
+    
+    // MARK: - Body
     
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -77,18 +101,19 @@ struct RecordingFeature {
                         do {
                             let url = try await makeRecordingURL()
                             try await recorderClient.startRecording(to: url)
-                            await send(.recordingStarted)
+                            await send(.recordingStarted(url))
                         } catch {
                             await send(.errorOccurred("녹음을 시작할 수 없습니다: \(error.localizedDescription)"))
                         }
                     }
                 }
                 
-            case .recordingStarted:
+            case .recordingStarted(let url):
                 state.isRecording = true
                 state.isInterrupted = false
                 state.recordingDuration = 0
                 state.meteringSamples = []
+                state.currentRecordingURL = url
                 
                 // Live Activity 시작 + 인터럽션 스트림 구독 + 타이머 시작
                 return .merge(
@@ -112,15 +137,32 @@ struct RecordingFeature {
                     .cancellable(id: RecordingCancelID.meteringUpdates, cancelInFlight: true)
                 )
                 
-            case .recordingStopped:
+            case .recordingStopped(let wavURL):
                 state.isRecording = false
                 state.isInterrupted = false
                 state.recordingDuration = 0
                 state.meteringSamples = []
+                state.currentRecordingURL = nil
+                
                 // Live Activity 종료
-                return .run { _ in
+                let endActivityEffect: Effect<Action> = .run { _ in
                     await liveActivityClient.endActivity()
                 }
+                
+                // WAV 파일이 있으면 M4A 변환 시작
+                guard let url = wavURL else {
+                    return endActivityEffect
+                }
+                
+                let m4aURL = url.deletingPathExtension().appendingPathExtension("m4a")
+                state.destination = .conversion(
+                    ConversionFeature.State(
+                        sourceURL: url,
+                        destinationURL: m4aURL
+                    )
+                )
+                
+                return endActivityEffect
                 
             case let .recordingDurationUpdated(duration):
                 state.recordingDuration = duration
@@ -159,7 +201,7 @@ struct RecordingFeature {
                     do {
                         let url = try await makeRecordingURL()
                         try await recorderClient.startRecording(to: url)
-                        await send(.recordingStarted)
+                        await send(.recordingStarted(url))
                     } catch {
                         await send(.errorOccurred("녹음 재개 실패: \(error.localizedDescription)"))
                     }
@@ -172,9 +214,25 @@ struct RecordingFeature {
                 state.isInterrupted = false
                 state.recordingDuration = 0
                 state.meteringSamples = []
+                state.currentRecordingURL = nil
                 return .cancel(id: RecordingCancelID.interruptionStream)
+                
+            // MARK: - Destination
+                
+            case .destination(.presented(.conversion(.delegate(.conversionCompleted)))):
+                // 변환 완료 → destination dismiss
+                state.destination = nil
+                return .none
+                
+            case .destination(.presented(.conversion(.delegate(.dismissed)))):
+                state.destination = nil
+                return .none
+                
+            case .destination:
+                return .none
             }
         }
+        .ifLet(\.$destination, action: \.destination)
     }
     
     // MARK: - Helpers
@@ -187,7 +245,7 @@ struct RecordingFeature {
             throw NSError(domain: "Recording", code: 1, userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"])
         }
         let timestamp = Int(Date().timeIntervalSince1970)
-        let fileName = "recording_\(timestamp).m4a"
+        let fileName = "recording_\(timestamp).wav"
         return documentsPath.appendingPathComponent(fileName)
     }
 }
