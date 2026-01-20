@@ -71,6 +71,7 @@ struct AppFeature {
     
     // MARK: - Dependencies
     
+    @Dependency(\.liveActivityClient) var liveActivityClient
     @Dependency(\.permissionClient) var permissionClient
     @Dependency(\.continuousClock) var clock
     
@@ -86,8 +87,9 @@ struct AppFeature {
             case .onAppear:
                 // 스플래시 중 권한 확인 + 타이머 병렬 실행
                 return .merge(
-                    // 권한 확인
+                    // Live Activity 정리 + 권한 확인
                     .run { send in
+                        await liveActivityClient.endAllExistingActivities()
                         let status = permissionClient.checkMicrophonePermission()
                         await send(.permissionChecked(status))
                     },

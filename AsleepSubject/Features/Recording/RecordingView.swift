@@ -53,15 +53,6 @@ struct RecordingView: View {
             }
         }
         .preferredColorScheme(.dark) // 강제 다크 모드
-        .onAppear {
-            store.send(.onAppear)
-        }
-        .overlay {
-            // 에러 메시지
-            if let errorMessage = store.errorMessage {
-                errorOverlay(message: errorMessage)
-            }
-        }
     }
     
     // MARK: - Navigation Buttons
@@ -208,56 +199,8 @@ struct RecordingView: View {
                 }
             }
         }
-        .disabled(store.permissionGranted == false)
-        .opacity(store.permissionGranted == false ? 0.5 : 1)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: store.isRecording)
         .accessibilityLabel(store.isRecording ? "녹음 정지" : "녹음 시작")
-    }
-    
-    // MARK: - Error Overlay
-    
-    private func errorOverlay(message: String) -> some View {
-        VStack {
-            Spacer()
-            
-            VStack(spacing: 16) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                
-                Text(message)
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                
-                HStack(spacing: 16) {
-                    if store.permissionGranted == false {
-                        Button("설정 열기") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color(hex: "333333"))
-                    }
-                    
-                    Button("닫기") {
-                        store.send(.clearError)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.white)
-                }
-            }
-            .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.red.opacity(0.9))
-                    .shadow(radius: 20)
-            )
-            .padding(.horizontal, 32)
-            .padding(.bottom, 100)
-        }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
     
     // MARK: - Helpers
@@ -310,7 +253,7 @@ private struct PulseView: View {
 #if DEBUG
 #Preview("Idle") {
     RecordingView(
-        store: Store(initialState: RecordingFeature.State(permissionGranted: true)) {
+        store: Store(initialState: RecordingFeature.State()) {
             EmptyReducer()
         },
         onNavigateToList: {},
@@ -323,7 +266,6 @@ private struct PulseView: View {
         store: Store(
             initialState: RecordingFeature.State(
                 isRecording: true,
-                permissionGranted: true,
                 recordingDuration: 3723
             )
         ) {
@@ -334,18 +276,5 @@ private struct PulseView: View {
     )
 }
 
-#Preview("No Permission") {
-    RecordingView(
-        store: Store(
-            initialState: RecordingFeature.State(
-                permissionGranted: false,
-                errorMessage: "마이크 권한이 필요합니다."
-            )
-        ) {
-            EmptyReducer()
-        },
-        onNavigateToList: {},
-        onNavigateToTimeline: {}
-    )
-}
+
 #endif

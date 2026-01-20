@@ -22,9 +22,6 @@ enum RecorderInterruptionEvent: Equatable, Sendable {
 
 /// 녹음 전용 프로토콜
 protocol RecorderClientProtocol: Sendable {
-    /// 마이크 권한 요청
-    func requestPermission() async -> Bool
-    
     /// 녹음 시작
     func startRecording(to url: URL) async throws
     
@@ -71,12 +68,6 @@ actor LiveRecorderClient: RecorderClientProtocol {
     
     private var _isRecording: Bool {
         recorder?.isRecording ?? false
-    }
-    
-    // MARK: - Permission
-    
-    nonisolated func requestPermission() async -> Bool {
-        await AVAudioApplication.requestRecordPermission()
     }
     
     // MARK: - Recording

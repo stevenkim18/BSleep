@@ -22,8 +22,6 @@ struct RecordingFeature {
     struct State: Equatable {
         // 녹음 상태
         var isRecording = false
-        var permissionGranted: Bool?
-        var errorMessage: String?
         
         // 녹음 시간
         var recordingDuration: TimeInterval = 0
@@ -36,10 +34,6 @@ struct RecordingFeature {
     }
     
     enum Action {
-        // 라이프사이클
-        case onAppear
-        case permissionResponse(Bool)
-        
         // 녹음
         case recordButtonTapped
         case recordingStarted
@@ -55,7 +49,6 @@ struct RecordingFeature {
         
         // 에러
         case errorOccurred(String)
-        case clearError
     }
     
     @Dependency(\.recorderClient) var recorderClient
@@ -65,30 +58,9 @@ struct RecordingFeature {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case .onAppear:
-                return .run { send in
-                    // 앱 재시작 시 기존 Live Activity 정리
-                    await liveActivityClient.endAllExistingActivities()
-                    
-                    let granted = await recorderClient.requestPermission()
-                    await send(.permissionResponse(granted))
-                }
-                
-            case let .permissionResponse(granted):
-                state.permissionGranted = granted
-                if !granted {
-                    state.errorMessage = "마이크 권한이 필요합니다. 설정에서 권한을 허용해주세요."
-                }
-                return .none
-                
             // MARK: - Recording
                 
             case .recordButtonTapped:
-                guard state.permissionGranted == true else {
-                    state.errorMessage = "마이크 권한이 필요합니다."
-                    return .none
-                }
-                
                 if state.isRecording {
                     // 녹음 중지
                     return .merge(
@@ -115,7 +87,6 @@ struct RecordingFeature {
             case .recordingStarted:
                 state.isRecording = true
                 state.isInterrupted = false
-                state.errorMessage = nil
                 state.recordingDuration = 0
                 state.meteringSamples = []
                 
@@ -196,17 +167,12 @@ struct RecordingFeature {
                 
             // MARK: - Error
                 
-            case let .errorOccurred(message):
-                state.errorMessage = message
+            case .errorOccurred:
                 state.isRecording = false
                 state.isInterrupted = false
                 state.recordingDuration = 0
                 state.meteringSamples = []
                 return .cancel(id: RecordingCancelID.interruptionStream)
-                
-            case .clearError:
-                state.errorMessage = nil
-                return .none
             }
         }
     }
