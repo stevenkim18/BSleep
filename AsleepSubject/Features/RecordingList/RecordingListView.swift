@@ -8,13 +8,11 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 녹음 목록 화면
 struct RecordingListView: View {
     @Bindable var store: StoreOf<RecordingListFeature>
     
     var body: some View {
         ZStack {
-            // 배경 그라데이션
             AppColors.backgroundGradient
                 .ignoresSafeArea()
             
@@ -52,11 +50,7 @@ struct RecordingListView: View {
                             Label("불완전 WAV 생성 (복구 가능)", systemImage: "doc.badge.ellipsis")
                         }
                         
-                        Button {
-                            store.send(.copyBigWavTapped)
-                        } label: {
-                            Label("5GB big.wav 복사", systemImage: "doc.on.doc")
-                        }
+
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -73,7 +67,6 @@ struct RecordingListView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.hidden)
         }
-        // WAV 변환 확인 Alert
         .alert(
             "변환이 필요합니다",
             isPresented: Binding(
@@ -90,7 +83,6 @@ struct RecordingListView: View {
         } message: {
             Text("이 파일은 WAV 형식입니다.\nM4A로 변환하시겠습니까?")
         }
-        // 변환 화면
         .fullScreenCover(
             item: $store.scope(state: \.conversion, action: \.conversion)
         ) { conversionStore in
