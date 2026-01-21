@@ -29,58 +29,32 @@ struct RecordingFeature {
     
     @ObservableState
     struct State {
-        // 녹음 상태
         var isRecording = false
-        
-        // 녹음 시간
         var recordingDuration: TimeInterval = 0
-        
-        // 인터럽션 상태
         var isInterrupted = false
-        
-        // 웨이브폼 샘플 (미터링)
         var meteringSamples: [Float] = []
-        
-        // 현재 녹음 중인 파일 URL (변환을 위해 저장)
         var currentRecordingURL: URL? = nil
-        
-        // 녹음 시작 확인 Alert
         var showStartConfirmation = false
-        
-        // 저장 공간 부족 Alert
         var showInsufficientStorageAlert = false
-        
-        // Destination
         @Presents var destination: Destination.State?
     }
     
     // MARK: - Action
     
     enum Action {
-        // 녹음
         case recordButtonTapped
         case startConfirmed
         case startCancelled
         case recordingStarted(URL)
         case recordingStopped(URL?)
-        
-        // 저장 공간 확인
-        case storageChecked(Result<Bool, Error>)  // true = 충분함
+        case storageChecked(Result<Bool, Error>)
         case openStorageSettingsTapped
         case dismissStorageAlert
-        
-        // 녹음 시간 업데이트
         case recordingDurationUpdated(TimeInterval)
         case meteringUpdated(Float)
-        
-        // 인터럽션
         case interruptionReceived(RecorderInterruptionEvent)
         case autoResumeRecording
-        
-        // 에러
         case errorOccurred(String)
-        
-        // Destination
         case destination(PresentationAction<Destination.Action>)
     }
     
@@ -94,7 +68,7 @@ struct RecordingFeature {
     
     // MARK: - Constants
     
-    private let minimumRequiredStorage: Int64 = 5 * 1024 * 1024 * 1024  // 5GB
+    private let minimumRequiredStorage: Int64 = 5 * 1024 * 1024 * 1024
     
     // MARK: - Body
     
@@ -105,7 +79,6 @@ struct RecordingFeature {
                 
             case .recordButtonTapped:
                 if state.isRecording {
-                    // 녹음 중지
                     return .merge(
                         .cancel(id: RecordingCancelID.interruptionStream),
                         .cancel(id: RecordingCancelID.meteringUpdates),
@@ -115,7 +88,6 @@ struct RecordingFeature {
                         }
                     )
                 } else {
-                    // 저장 공간 확인 후 시작 확인 Alert 표시
                     let minStorage = minimumRequiredStorage
                     return .run { send in
                         do {
@@ -129,17 +101,14 @@ struct RecordingFeature {
                 }
                 
             case .storageChecked(.success(true)):
-                // 저장 공간 충분 → 시작 확인 Alert 표시
                 state.showStartConfirmation = true
                 return .none
                 
             case .storageChecked(.success(false)):
-                // 저장 공간 부족 → 부족 Alert 표시
                 state.showInsufficientStorageAlert = true
                 return .none
                 
             case .storageChecked(.failure):
-                // 저장 공간 확인 실패 → 그냥 진행 (원활한 UX 위해)
                 state.showStartConfirmation = true
                 return .none
                 
@@ -155,10 +124,9 @@ struct RecordingFeature {
                 
             case .startConfirmed:
                 state.showStartConfirmation = false
-                // 녹음 시작
                 return .run { send in
                     do {
-                        let url = try makeRecordingURL()
+                        let url = try URL.makeRecordingURL()
                         try await recorderClient.startRecording(to: url)
                         await send(.recordingStarted(url))
                     } catch {
@@ -177,7 +145,6 @@ struct RecordingFeature {
                 state.meteringSamples = []
                 state.currentRecordingURL = url
                 
-                // Live Activity 시작 + 인터럽션 스트림 구독 + 타이머 시작
                 return .merge(
                     .run { _ in
                         try? await liveActivityClient.startActivity(recordingName: "수면 녹음")
@@ -188,7 +155,6 @@ struct RecordingFeature {
                         }
                     }
                     .cancellable(id: RecordingCancelID.interruptionStream, cancelInFlight: true),
-                    // 녹음 시간 업데이트 (1초마다)
                     .run { send in
                         var elapsed: TimeInterval = 0
                         for await _ in clock.timer(interval: .seconds(1)) {
@@ -206,12 +172,10 @@ struct RecordingFeature {
                 state.meteringSamples = []
                 state.currentRecordingURL = nil
                 
-                // Live Activity 종료
                 let endActivityEffect: Effect<Action> = .run { _ in
                     await liveActivityClient.endActivity()
                 }
                 
-                // WAV 파일이 있으면 M4A 변환 시작
                 guard let url = wavURL else {
                     return endActivityEffect
                 }
@@ -231,7 +195,6 @@ struct RecordingFeature {
                 return .none
                 
             case let .meteringUpdated(level):
-                // 최근 50개 샘플만 유지
                 state.meteringSamples.append(level)
                 if state.meteringSamples.count > 50 {
                     state.meteringSamples.removeFirst()
@@ -244,7 +207,6 @@ struct RecordingFeature {
                 guard state.isRecording else { return .none }
                 state.isInterrupted = true
                 state.isRecording = false
-                // 현재 녹음 저장
                 return .merge(
                     .cancel(id: RecordingCancelID.meteringUpdates),
                     .run { send in
@@ -254,14 +216,13 @@ struct RecordingFeature {
                 
             case .interruptionReceived(.ended):
                 guard state.isInterrupted else { return .none }
-                // 자동으로 새 녹음 시작
                 return .send(.autoResumeRecording)
                 
             case .autoResumeRecording:
                 state.isInterrupted = false
                 return .run { send in
                     do {
-                        let url = try makeRecordingURL()
+                        let url = try URL.makeRecordingURL()
                         try await recorderClient.startRecording(to: url)
                         await send(.recordingStarted(url))
                     } catch {
@@ -282,7 +243,6 @@ struct RecordingFeature {
             // MARK: - Destination
                 
             case .destination(.presented(.conversion(.delegate(.conversionCompleted)))):
-                // 변환 완료 → destination dismiss
                 state.destination = nil
                 return .none
                 
@@ -295,16 +255,5 @@ struct RecordingFeature {
             }
         }
         .ifLet(\.$destination, action: \.destination)
-    }
-    
-    // MARK: - Helpers
-    
-    private func makeRecordingURL() throws -> URL {
-        guard let documentsPath = URL.documentsDirectory else {
-            throw NSError(domain: "Recording", code: 1, userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"])
-        }
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let fileName = "recording_\(timestamp).wav"
-        return documentsPath.appendingPathComponent(fileName)
     }
 }

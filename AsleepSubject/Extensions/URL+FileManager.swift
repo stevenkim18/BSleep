@@ -56,4 +56,18 @@ extension URL {
         }
         return date
     }
+    
+    /// 녹음 파일 URL 생성 (timestamp 기반)
+    static func makeRecordingURL() throws -> URL {
+        guard let documentsPath = URL.documentsDirectory else {
+            throw NSError(
+                domain: "Recording",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"]
+            )
+        }
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let fileName = "recording_\(timestamp).wav"
+        return documentsPath.appendingPathComponent(fileName)
+    }
 }
