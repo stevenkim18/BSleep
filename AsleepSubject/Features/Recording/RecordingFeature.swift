@@ -158,7 +158,7 @@ struct RecordingFeature {
                 // 녹음 시작
                 return .run { send in
                     do {
-                        let url = try await makeRecordingURL()
+                        let url = try makeRecordingURL()
                         try await recorderClient.startRecording(to: url)
                         await send(.recordingStarted(url))
                     } catch {
@@ -261,7 +261,7 @@ struct RecordingFeature {
                 state.isInterrupted = false
                 return .run { send in
                     do {
-                        let url = try await makeRecordingURL()
+                        let url = try makeRecordingURL()
                         try await recorderClient.startRecording(to: url)
                         await send(.recordingStarted(url))
                     } catch {

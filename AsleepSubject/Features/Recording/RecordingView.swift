@@ -147,14 +147,21 @@ struct RecordingView: View {
                 // 외부 링
                 Circle()
                     .stroke(
-                        store.isRecording ? Color.red.opacity(0.3) : AppColors.primaryAccent.opacity(0.2),
+                        store.isInterrupted ? Color.orange.opacity(0.3) :
+                        store.isRecording ? Color.red.opacity(0.3) :
+                        AppColors.primaryAccent.opacity(0.2),
                         lineWidth: 4
                     )
                     .frame(width: 200, height: 200)
                 
-                // 펄스 애니메이션 (녹음 중)
-                if store.isRecording {
+                // 펄스 애니메이션 (녹음 중, 인터럽트 시 멈춤)
+                if store.isRecording && !store.isInterrupted {
                     PulseView()
+                } else if store.isInterrupted {
+                    // 인터럽트 상태일 때 오렌지 원
+                    Circle()
+                        .fill(Color.orange.opacity(0.1))
+                        .frame(width: 180, height: 180)
                 } else {
                     // 대기 상태일 때 은은한 숨쉬기 효과
                     Circle()
@@ -163,16 +170,31 @@ struct RecordingView: View {
                 }
                 
                 // 중앙 아이콘
-                Image(systemName: store.isRecording ? "waveform" : "mic.fill")
+                Image(systemName: store.isInterrupted ? "pause.fill" :
+                      store.isRecording ? "waveform" : "mic.fill")
                     .font(.system(size: 64))
-                    .foregroundStyle(store.isRecording ? .red : AppColors.primaryAccent)
-                    .symbolEffect(.variableColor.iterative, isActive: store.isRecording)
-                    .shadow(color: (store.isRecording ? Color.red : AppColors.primaryAccent).opacity(0.5), radius: 20)
+                    .foregroundStyle(
+                        store.isInterrupted ? .orange :
+                        store.isRecording ? .red :
+                        AppColors.primaryAccent
+                    )
+                    .symbolEffect(.variableColor.iterative, isActive: store.isRecording && !store.isInterrupted)
+                    .shadow(color: (store.isInterrupted ? Color.orange :
+                                    store.isRecording ? Color.red :
+                                    AppColors.primaryAccent).opacity(0.5), radius: 20)
             }
             
             // 상태 텍스트
             VStack(spacing: 12) {
-                if store.isRecording {
+                if store.isInterrupted {
+                    Text("인터럽션 발생")
+                        .font(.title2.bold())
+                        .foregroundStyle(.orange)
+                    
+                    Text("잠시 후 자동으로 재개됩니다")
+                        .font(.callout)
+                        .foregroundStyle(.white.opacity(0.7))
+                } else if store.isRecording {
                     Text("녹음 중")
                         .font(.title2.bold())
                         .foregroundStyle(.red)
@@ -187,14 +209,6 @@ struct RecordingView: View {
                     Text("녹음 중에는 앱을 종료하지 마세요")
                         .font(.callout)
                         .foregroundStyle(.white.opacity(0.6))
-                } else if store.isInterrupted {
-                    Text("인터럽션 발생")
-                        .font(.title2.bold())
-                        .foregroundStyle(.orange)
-                    
-                    Text("잠시 후 자동으로 재개됩니다")
-                        .font(.callout)
-                        .foregroundStyle(.white.opacity(0.7))
                 } else {
                     Text("수면 녹음")
                         .font(.title2.bold())
@@ -260,36 +274,6 @@ struct RecordingView: View {
     }
 }
 
-// MARK: - Pulse Animation View
-
-private struct PulseView: View {
-    @State private var animate = false
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.red.opacity(0.4), lineWidth: 1)
-                .frame(width: 180, height: 180)
-                .scaleEffect(animate ? 1.5 : 1.0)
-                .opacity(animate ? 0 : 0.8)
-            
-            Circle()
-                .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                .frame(width: 180, height: 180)
-                .scaleEffect(animate ? 1.35 : 1.0)
-                .opacity(animate ? 0 : 0.6)
-                .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false).delay(0.2), value: animate)
-        }
-        .animation(
-            .easeOut(duration: 1.5).repeatForever(autoreverses: false),
-            value: animate
-        )
-        .onAppear {
-            animate = true
-        }
-    }
-}
-
 // MARK: - Previews
 
 #if DEBUG
@@ -318,5 +302,19 @@ private struct PulseView: View {
     )
 }
 
-
+#Preview("Interrupted") {
+    RecordingView(
+        store: Store(
+            initialState: RecordingFeature.State(
+                isRecording: true,
+                recordingDuration: 1800,
+                isInterrupted: true
+            )
+        ) {
+            EmptyReducer()
+        },
+        onNavigateToList: {},
+        onNavigateToTimeline: {}
+    )
+}
 #endif
