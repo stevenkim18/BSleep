@@ -69,14 +69,14 @@ struct SeekBar: View {
             
             // 시간 표시
             HStack {
-                Text(formatTime(isDragging ? duration * dragProgress : currentTime))
+                Text((isDragging ? duration * dragProgress : currentTime).formattedAsMinutesSeconds)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 
                 Spacer()
                 
-                Text(formatTime(duration))
+                Text(duration.formattedAsMinutesSeconds)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -85,12 +85,6 @@ struct SeekBar: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("재생 진행률")
         .accessibilityValue("\(Int(progress * 100))퍼센트")
-    }
-    
-    private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 

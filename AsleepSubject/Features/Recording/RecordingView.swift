@@ -200,7 +200,7 @@ struct RecordingView: View {
                         .foregroundStyle(.red)
                     
                     // 녹음 시간
-                    Text(formatDuration(store.recordingDuration))
+                    Text(store.recordingDuration.formattedAsDuration)
                         .font(.system(size: 64, weight: .thin, design: .monospaced))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
@@ -257,20 +257,6 @@ struct RecordingView: View {
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: store.isRecording)
         .accessibilityLabel(store.isRecording ? "녹음 정지" : "녹음 시작")
-    }
-    
-    // MARK: - Helpers
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = (Int(duration) % 3600) / 60
-        let seconds = Int(duration) % 60
-        
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
-        }
     }
 }
 

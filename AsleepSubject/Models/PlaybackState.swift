@@ -21,18 +21,12 @@ struct PlaybackState: Equatable, Sendable {
     
     /// 포맷된 현재 시간 (mm:ss)
     var formattedCurrentTime: String {
-        formatTime(currentTime)
+        currentTime.formattedAsMinutesSeconds
     }
     
     /// 포맷된 전체 시간 (mm:ss)
     var formattedDuration: String {
-        formatTime(duration)
-    }
-    
-    private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        duration.formattedAsMinutesSeconds
     }
 }
 
