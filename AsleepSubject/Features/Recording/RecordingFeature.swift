@@ -44,6 +44,12 @@ struct RecordingFeature {
         // 현재 녹음 중인 파일 URL (변환을 위해 저장)
         var currentRecordingURL: URL? = nil
         
+        // 녹음 시작 확인 Alert
+        var showStartConfirmation = false
+        
+        // 저장 공간 부족 Alert
+        var showInsufficientStorageAlert = false
+        
         // Destination
         @Presents var destination: Destination.State?
     }
@@ -53,8 +59,15 @@ struct RecordingFeature {
     enum Action {
         // 녹음
         case recordButtonTapped
+        case startConfirmed
+        case startCancelled
         case recordingStarted(URL)
         case recordingStopped(URL?)
+        
+        // 저장 공간 확인
+        case storageChecked(Result<Bool, Error>)  // true = 충분함
+        case openStorageSettingsTapped
+        case dismissStorageAlert
         
         // 녹음 시간 업데이트
         case recordingDurationUpdated(TimeInterval)
@@ -75,7 +88,13 @@ struct RecordingFeature {
     
     @Dependency(\.recorderClient) var recorderClient
     @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.appStorageClient) var appStorageClient
+    @Dependency(\.permissionClient) var permissionClient
     @Dependency(\.continuousClock) var clock
+    
+    // MARK: - Constants
+    
+    private let minimumRequiredStorage: Int64 = 5 * 1024 * 1024 * 1024  // 5GB
     
     // MARK: - Body
     
@@ -96,17 +115,60 @@ struct RecordingFeature {
                         }
                     )
                 } else {
-                    // 녹음 시작
+                    // 저장 공간 확인 후 시작 확인 Alert 표시
+                    let minStorage = minimumRequiredStorage
                     return .run { send in
                         do {
-                            let url = try await makeRecordingURL()
-                            try await recorderClient.startRecording(to: url)
-                            await send(.recordingStarted(url))
+                            let available = try await appStorageClient.availableCapacity()
+                            let hasSufficientStorage = available >= minStorage
+                            await send(.storageChecked(.success(hasSufficientStorage)))
                         } catch {
-                            await send(.errorOccurred("녹음을 시작할 수 없습니다: \(error.localizedDescription)"))
+                            await send(.storageChecked(.failure(error)))
                         }
                     }
                 }
+                
+            case .storageChecked(.success(true)):
+                // 저장 공간 충분 → 시작 확인 Alert 표시
+                state.showStartConfirmation = true
+                return .none
+                
+            case .storageChecked(.success(false)):
+                // 저장 공간 부족 → 부족 Alert 표시
+                state.showInsufficientStorageAlert = true
+                return .none
+                
+            case .storageChecked(.failure):
+                // 저장 공간 확인 실패 → 그냥 진행 (원활한 UX 위해)
+                state.showStartConfirmation = true
+                return .none
+                
+            case .openStorageSettingsTapped:
+                state.showInsufficientStorageAlert = false
+                return .run { _ in
+                    permissionClient.openSettings()
+                }
+                
+            case .dismissStorageAlert:
+                state.showInsufficientStorageAlert = false
+                return .none
+                
+            case .startConfirmed:
+                state.showStartConfirmation = false
+                // 녹음 시작
+                return .run { send in
+                    do {
+                        let url = try await makeRecordingURL()
+                        try await recorderClient.startRecording(to: url)
+                        await send(.recordingStarted(url))
+                    } catch {
+                        await send(.errorOccurred("녹음을 시작할 수 없습니다: \(error.localizedDescription)"))
+                    }
+                }
+                
+            case .startCancelled:
+                state.showStartConfirmation = false
+                return .none
                 
             case .recordingStarted(let url):
                 state.isRecording = true

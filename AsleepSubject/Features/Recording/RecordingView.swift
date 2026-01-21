@@ -58,6 +58,38 @@ struct RecordingView: View {
         ) { conversionStore in
             ConversionView(store: conversionStore)
         }
+        .alert(
+            "수면 녹음 시작",
+            isPresented: Binding(
+                get: { store.showStartConfirmation },
+                set: { _ in store.send(.startCancelled) }
+            )
+        ) {
+            Button("시작") {
+                store.send(.startConfirmed)
+            }
+            Button("취소", role: .cancel) {
+                store.send(.startCancelled)
+            }
+        } message: {
+            Text("녹음 중에는 앱을 종료하지 마세요.\n백그라운드에서도 녹음이 계속됩니다.")
+        }
+        .alert(
+            "저장 공간 부족",
+            isPresented: Binding(
+                get: { store.showInsufficientStorageAlert },
+                set: { _ in store.send(.dismissStorageAlert) }
+            )
+        ) {
+            Button("설정으로 이동") {
+                store.send(.openStorageSettingsTapped)
+            }
+            Button("취소", role: .cancel) {
+                store.send(.dismissStorageAlert)
+            }
+        } message: {
+            Text("녹음을 위해 최소 5GB의 저장 공간이 필요합니다.\n설정에서 저장 공간을 확보해주세요.")
+        }
     }
     
     // MARK: - Navigation Buttons
@@ -150,6 +182,11 @@ struct RecordingView: View {
                         .font(.system(size: 64, weight: .thin, design: .monospaced))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    
+                    // 경고 문구
+                    Text("녹음 중에는 앱을 종료하지 마세요")
+                        .font(.callout)
+                        .foregroundStyle(.white.opacity(0.6))
                 } else if store.isInterrupted {
                     Text("인터럽션 발생")
                         .font(.title2.bold())
