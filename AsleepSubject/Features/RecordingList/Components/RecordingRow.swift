@@ -67,10 +67,16 @@ struct RecordingRow: View {
                 
                 Spacer()
                 
-                // 재생 시간
-                Text(recording.formattedDuration)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.8))
+                // 재생 시간 + 파일 용량 (세로 배치)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(recording.formattedDuration)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.8))
+                    
+                    Text(recording.formattedFileSize)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
                 
                 // 화살표
                 Image(systemName: "chevron.right")

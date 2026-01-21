@@ -52,9 +52,11 @@ struct Recording: Equatable, Identifiable {
         url.lastPathComponent
     }
     
-    /// 포맷된 날짜 문자열
+    /// 포맷된 날짜 문자열 (예: "2026.01.21 1:33 PM")
     var formattedDate: String {
-        startedAt.formatted(date: .abbreviated, time: .shortened)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy.MM.dd h:mm a"
+        return formatter.string(from: startedAt)
     }
     
     /// 포맷된 재생 시간 문자열 (h:mm:ss 또는 mm:ss)
@@ -68,6 +70,19 @@ struct Recording: Equatable, Identifiable {
         } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
+    }
+    
+    /// 파일 크기 (바이트)
+    var fileSize: Int64? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        return attributes?[.size] as? Int64
+    }
+    
+    /// 포맷된 파일 크기 문자열 (예: "12.5 MB")
+    var formattedFileSize: String {
+        guard let size = fileSize else { return "—" }
+        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
 }
 

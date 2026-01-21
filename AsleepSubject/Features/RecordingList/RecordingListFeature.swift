@@ -61,6 +61,7 @@ struct RecordingListFeature {
     }
     
     @Dependency(\.recordingStorageClient) var recordingStorageClient
+    @Dependency(\.playerClient) var playerClient
     
     var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -110,7 +111,16 @@ struct RecordingListFeature {
                 
             case .playback(.presented(.delegate(.dismiss))):
                 state.playback = nil
-                return .none
+                return .run { _ in
+                    await playerClient.stop()
+                }
+                
+            case .playback(.dismiss):
+                // Interactive dismiss (swipe down, tap outside) 처리
+                // 시트가 닫힐 때 재생 중지
+                return .run { _ in
+                    await playerClient.stop()
+                }
                 
             case .playback:
                 return .none
