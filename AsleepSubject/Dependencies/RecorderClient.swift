@@ -48,7 +48,7 @@ actor LiveRecorderClient: RecorderClientProtocol {
     // MARK: - Init / Deinit
     
     init() {
-        setupInterruptionObserver()
+        Task { await setupInterruptionObserver() }
     }
     
     deinit {

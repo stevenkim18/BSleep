@@ -75,7 +75,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     
     /// 비동기로 오디오 파일의 duration을 로드
     private func getDurationAsync(of url: URL) async -> TimeInterval {
-        let asset = AVAsset(url: url)
+        let asset = AVURLAsset(url: url)
         
         do {
             // iOS 16+ 비동기 로딩

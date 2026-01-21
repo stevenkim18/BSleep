@@ -52,7 +52,8 @@ actor LiveAudioConverterClient: AudioConverterClientProtocol {
         from sourceURL: URL,
         to destinationURL: URL
     ) async throws -> AsyncStream<Float> {
-        let asset = AVAsset(url: sourceURL)
+        // iOS 18+: AVURLAsset 사용 (AVAsset(url:) deprecated)
+        let asset = AVURLAsset(url: sourceURL)
         
         guard let exportSession = AVAssetExportSession(
             asset: asset,
@@ -64,38 +65,30 @@ actor LiveAudioConverterClient: AudioConverterClientProtocol {
         // 기존 파일이 있으면 삭제
         destinationURL.removeFileIfExists()
         
-        exportSession.outputURL = destinationURL
-        exportSession.outputFileType = .m4a
-        
         return AsyncStream { continuation in
             Task {
-                // 변환 시작 (비동기)
-                let exportTask = Task {
-                    await exportSession.export()
+                // iOS 18+: export(to:as:) 사용 및 states()로 진행률 모니터링
+                async let exportResult: Void = exportSession.export(to: destinationURL, as: .m4a)
+                
+                // iOS 18+: states(updateInterval:)로 상태 모니터링 (status 폴링 대체)
+                for await state in exportSession.states(updateInterval: 0.1) {
+                    switch state {
+                    case .pending, .waiting:
+                        continue
+                    case .exporting(let progress):
+                        continuation.yield(Float(progress.fractionCompleted))
+                    @unknown default:
+                        // 미래에 추가될 수 있는 새로운 상태 처리
+                        continue
+                    }
                 }
                 
-                // Export가 시작될 때까지 대기
-                while exportSession.status == .unknown || exportSession.status == .waiting {
-                    try? await Task.sleep(for: .milliseconds(50))
-                }
-                
-                // 진행률 모니터링
-                while exportSession.status == .exporting {
-                    continuation.yield(exportSession.progress)
-                    try? await Task.sleep(for: .milliseconds(100))
-                }
-                
-                // exportTask가 완료될 때까지 대기
-                await exportTask.value
-                
-                // 최종 결과 처리
-                switch exportSession.status {
-                case .completed:
+                // export 완료 대기 및 결과 처리
+                do {
+                    try await exportResult
                     continuation.yield(1.0)
                     continuation.finish()
-                case .failed, .cancelled:
-                    continuation.finish()
-                default:
+                } catch {
                     continuation.finish()
                 }
             }
