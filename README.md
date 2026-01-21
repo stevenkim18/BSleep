@@ -20,7 +20,7 @@
 
 | 녹음 대기 | 녹음 중 | 녹음 목록 | 재생 화면 | 타임라인 |
 |:---------:|:---------:|:---------:|:--------:|:---------:|
-| ![녹음](images/RecordingView.PNG) | ![녹음 중](images/RecordingView-Recording.PNG) | ![목록](images/ListView.PNG) | ![재생](images/PlaybackView.PNG) | ![타임라인](images/TimelineView.PNG) |
+| ![녹음](images/RecordingView.PNG) | ![녹음 중](images/RecordingView-Recording.PNG) | ![목록](images/ListView.PNG) | ![재생](images/PlayBackView.PNG) | ![타임라인](images/TimeLineView.PNG) |
 
 
 ## 3. 주요 기능
