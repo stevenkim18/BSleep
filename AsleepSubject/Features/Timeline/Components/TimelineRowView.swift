@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 한 날짜의 행 뷰 (바 영역만, 날짜 레이블 제외)
 struct TimelineRowView: View {
     let config: TimelineConfig
     let date: Date
@@ -16,7 +15,6 @@ struct TimelineRowView: View {
     
     var body: some View {
         ZStack(alignment: .leading) {
-            // 배경 (그리드 라인)
             Rectangle()
                 .fill(Color.clear)
                 .frame(height: config.rowHeight)
@@ -25,7 +23,6 @@ struct TimelineRowView: View {
                         .stroke(AppColors.timelineGridLine, lineWidth: 0.5)
                 )
             
-            // 녹음 바들
             ForEach(recordings) { recording in
                 TimelineBarView(
                     config: config,

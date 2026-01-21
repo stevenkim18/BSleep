@@ -7,12 +7,11 @@
 
 import SwiftUI
 
-/// 진행률 표시 및 탐색 기능을 제공하는 SeekBar 컴포넌트
 struct SeekBar: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let onSeek: (TimeInterval) -> Void
-    var tintColor: Color = AppColors.primaryAccent // 기본값 설정
+    var tintColor: Color = AppColors.primaryAccent
     
     @State private var isDragging = false
     @State private var dragProgress: Double = 0
@@ -28,20 +27,16 @@ struct SeekBar: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // 프로그레스 바
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // 배경 트랙
                     Capsule()
-                        .fill(Color.white.opacity(0.2)) // 다크 모드에 맞게 수정
+                        .fill(Color.white.opacity(0.2))
                         .frame(height: 4)
                     
-                    // 진행률 트랙
                     Capsule()
                         .fill(activeColor)
                         .frame(width: max(0, geometry.size.width * progress), height: 4)
                     
-                    // 드래그 핸들 (Thumb)
                     Circle()
                         .fill(activeColor)
                         .frame(width: isDragging ? 16 : 12, height: isDragging ? 16 : 12)
@@ -67,7 +62,6 @@ struct SeekBar: View {
             }
             .frame(height: 20)
             
-            // 시간 표시
             HStack {
                 Text((isDragging ? duration * dragProgress : currentTime).formattedAsMinutesSeconds)
                     .font(.caption)

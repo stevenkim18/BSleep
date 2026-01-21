@@ -11,18 +11,13 @@ import Foundation
 
 // MARK: - Protocol
 
-/// 녹음 파일 저장소 관리를 위한 프로토콜
 protocol RecordingStorageClientProtocol: Sendable {
-    /// 저장된 녹음 파일 목록 조회
     func fetchRecordings() async throws -> [Recording]
-    
-    /// 녹음 파일 삭제
     func deleteRecording(_ recording: Recording) async throws
 }
 
 // MARK: - Live Implementation
 
-/// RecordingStorageClientProtocol의 실제 구현체
 actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     
     private let fileManager = FileManager.default
@@ -39,7 +34,6 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
             )
             .filter { $0.pathExtension == "m4a" || $0.pathExtension == "wav" }
         
-        // 비동기로 각 파일의 Recording 생성
         var recordings: [Recording] = []
         
         for url in files {
@@ -47,11 +41,9 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
                 continue
             }
             
-            // 비동기로 duration 로드
             let duration = await getDurationAsync(of: url)
             let endedAt = createdAt.addingTimeInterval(duration)
             
-            // 확장자에서 포맷 결정
             let format: Recording.Format = url.pathExtension == "wav" ? .wav : .m4a
             
             let recording = Recording(
@@ -73,12 +65,10 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     
     // MARK: - Private
     
-    /// 비동기로 오디오 파일의 duration을 로드
     private func getDurationAsync(of url: URL) async -> TimeInterval {
         let asset = AVURLAsset(url: url)
         
         do {
-            // iOS 16+ 비동기 로딩
             let duration = try await asset.load(.duration)
             let seconds = CMTimeGetSeconds(duration)
             
@@ -86,10 +76,8 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
                 return seconds
             }
         } catch {
-            // 로딩 실패 시 무시
         }
         
-        // Fallback: AVAudioPlayer로 시도
         if let player = try? AVAudioPlayer(contentsOf: url) {
             return player.duration
         }
@@ -101,7 +89,6 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
 // MARK: - Mock Implementation for Previews
 
 #if DEBUG
-/// Preview/Test용 Mock 구현체
 struct MockRecordingStorageClient: RecordingStorageClientProtocol {
     var recordings: [Recording] = []
     var shouldFail: Bool = false
@@ -117,7 +104,6 @@ struct MockRecordingStorageClient: RecordingStorageClientProtocol {
         if shouldFail {
             throw NSError(domain: "MockError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Mock delete failed"])
         }
-        // Do nothing in mock
     }
 }
 #endif
@@ -136,4 +122,3 @@ extension DependencyValues {
         set { self[RecordingStorageClientKey.self] = newValue }
     }
 }
-

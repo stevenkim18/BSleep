@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 복구 실패 화면
 struct RecoveryErrorView: View {
     let message: String
     let onDelete: () -> Void
@@ -17,7 +16,6 @@ struct RecoveryErrorView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            // 에러 아이콘
             ZStack {
                 Circle()
                     .fill(Color.red.opacity(0.2))
@@ -28,7 +26,6 @@ struct RecoveryErrorView: View {
                     .foregroundStyle(.red)
             }
             
-            // 에러 메시지
             VStack(spacing: 12) {
                 Text("복구 실패")
                     .font(.title2.bold())
@@ -47,9 +44,7 @@ struct RecoveryErrorView: View {
             
             Spacer()
             
-            // 버튼들
             VStack(spacing: 12) {
-                // 파일 삭제 버튼
                 Button(action: onDelete) {
                     Label("파일 삭제", systemImage: "trash")
                         .font(.headline)
@@ -60,7 +55,6 @@ struct RecoveryErrorView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 
-                // 닫기 버튼
                 Button(action: onClose) {
                     Text("닫기")
                         .font(.headline)

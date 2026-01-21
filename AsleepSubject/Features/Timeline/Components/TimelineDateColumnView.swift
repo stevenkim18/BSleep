@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-/// 왼쪽 날짜 컬럼 뷰
-/// - 가로 스크롤 시에도 고정 위치 유지
 struct TimelineDateColumnView: View {
     let config: TimelineConfig
     let dates: [Date]
@@ -27,11 +25,10 @@ struct TimelineDateColumnView: View {
     
     // MARK: - Private Methods
     
-    /// 날짜 포맷팅 (요일 월/일)
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "E M/d"  // "월 1/19"
+        formatter.dateFormat = "E M/d"
         return formatter.string(from: date)
     }
 }

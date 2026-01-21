@@ -9,16 +9,12 @@ import Foundation
 
 // MARK: - Recording Model
 
-/// 녹음 파일 정보를 담는 모델
-struct Recording: Equatable, Identifiable {
+struct Recording: Equatable, Identifiable, Sendable {
     
     // MARK: - Format
     
-    /// 녹음 파일 포맷
     enum Format: String, Codable, Equatable {
-        /// 원본 WAV (변환 전)
         case wav
-        /// M4A 변환 완료
         case m4a
     }
     
@@ -30,14 +26,10 @@ struct Recording: Equatable, Identifiable {
     let endedAt: Date
     let format: Format
     
-    /// 녹음 길이 (초)
     var duration: TimeInterval {
         endedAt.timeIntervalSince(startedAt)
     }
     
-    /// 수면 날짜 (21시 기준)
-    /// - 21시 이후 시작 → 다음 날로 표시
-    /// - 21시 이전 시작 → 당일로 표시
     var sleepDate: Date {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: startedAt)
@@ -47,19 +39,16 @@ struct Recording: Equatable, Identifiable {
         return startedAt.startOfDay
     }
     
-    /// 파일명 (확장자 포함)
     var fileName: String {
         url.lastPathComponent
     }
     
-    /// 포맷된 날짜 문자열 (예: "2026.01.21 1:33 PM")
     var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy.MM.dd h:mm a"
         return formatter.string(from: startedAt)
     }
     
-    /// 포맷된 재생 시간 문자열 (h:mm:ss 또는 mm:ss)
     var formattedDuration: String {
         let hours = Int(duration) / 3600
         let minutes = (Int(duration) % 3600) / 60
@@ -72,13 +61,11 @@ struct Recording: Equatable, Identifiable {
         }
     }
     
-    /// 파일 크기 (바이트)
     var fileSize: Int64? {
         guard url.fileExists else { return nil }
         return url.fileSize.map { Int64($0) }
     }
     
-    /// 포맷된 파일 크기 문자열 (예: "12.5 MB")
     var formattedFileSize: String {
         guard let size = fileSize else { return "—" }
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
@@ -97,67 +84,55 @@ extension Date {
 
 #if DEBUG
 extension Recording {
-    /// 다양한 케이스의 Mock 녹음 데이터
     static var mockRecordings: [Recording] {
         [
-            // Case 1: 일반적인 밤 수면 (7시간)
             .mock(
                 daysAgo: 0,
                 startHour: 23, startMinute: 30,
                 endHour: 6, endMinute: 30
             ),
             
-            // Case 2: 늦은 취침 (8시간)
             .mock(
                 daysAgo: 1,
                 startHour: 22, startMinute: 0,
                 endHour: 1, endMinute: 0
             ),
             
-            // Case 3: 이른 취침 + 낮잠
             .mock(
                 daysAgo: 2,
                 startHour: 23, startMinute: 0,
                 endHour: 1, endMinute: 30
             ),
-            .mock(  // 낮잠
+            .mock(
                 daysAgo: 2,
                 startHour: 14, startMinute: 0,
                 endHour: 15, endMinute: 30
             ),
             
-            // Case 4: 짧은 수면 (4시간)
             .mock(
                 daysAgo: 3,
                 startHour: 18, startMinute: 0,
                 endHour: 21, endMinute: 0
             ),
             
-            // Case 5: 긴 수면 (10시간)
             .mock(
                 daysAgo: 4,
                 startHour: 22, startMinute: 30,
                 endHour: 8, endMinute: 30
             ),
             
-            // Case 6: 자정 전후 수면
             .mock(
                 daysAgo: 5,
                 startHour: 23, startMinute: 45,
                 endHour: 7, endMinute: 15
             ),
             
-            // Case 7: 새벽 취침
             .mock(
                 daysAgo: 6,
                 startHour: 3, startMinute: 0,
                 endHour: 10, endMinute: 0
             ),
             
-            // Case 8-13: 일부 날짜는 녹음 없음 (빈 행 테스트)
-            // daysAgo 7, 8, 9, 10, 11, 12 는 데이터 없음
-            
-            // Case 14: 아주 짧은 낮잠만 (30분)
             .mock(
                 daysAgo: 13,
                 startHour: 15, startMinute: 0,
@@ -166,7 +141,6 @@ extension Recording {
         ]
     }
     
-    /// Mock 녹음 생성 헬퍼
     static func mock(
         daysAgo: Int,
         startHour: Int, startMinute: Int,
@@ -178,7 +152,6 @@ extension Recording {
             fatalError("Failed to calculate base date")
         }
         
-        // 시작 시간 계산 (21시 이후면 전날 기준)
         guard var startDate = calendar.date(
             bySettingHour: startHour,
             minute: startMinute,
@@ -192,7 +165,6 @@ extension Recording {
             startDate = calendar.date(byAdding: .day, value: -1, to: startDate) ?? startDate
         }
         
-        // 종료 시간 계산
         guard var endDate = calendar.date(
             bySettingHour: endHour,
             minute: endMinute,
@@ -202,7 +174,6 @@ extension Recording {
             fatalError("Failed to create end date")
         }
         
-        // 종료가 시작보다 이전이면 다음날
         if endDate <= startDate {
             endDate = calendar.date(byAdding: .day, value: 1, to: endDate) ?? endDate
         }

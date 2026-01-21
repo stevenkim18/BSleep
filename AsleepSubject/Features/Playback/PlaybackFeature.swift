@@ -20,37 +20,23 @@ struct PlaybackFeature {
     
     @ObservableState
     struct State: Equatable {
-        /// 재생할 녹음 파일
         let recording: Recording
-        
-        /// 재생 상태
         var isPlaying = false
         var isPaused = false
         var playbackState: PlaybackState?
-        
-        /// 에러 메시지
         var errorMessage: String?
     }
     
     enum Action {
-        // 라이프사이클
         case onAppear
-        
-        // 재생 컨트롤
         case playTapped
         case pauseTapped
         case resumeTapped
         case stopTapped
         case seekTo(TimeInterval)
-        
-        // 상태 업데이트
         case playbackStateUpdated(PlaybackState)
         case playbackFinished
-        
-        // 에러
         case errorOccurred(String)
-        
-        // Dismiss
         case dismissTapped
         case delegate(Delegate)
         
@@ -65,7 +51,6 @@ struct PlaybackFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // 자동 재생 시작
                 return .send(.playTapped)
                 
             case .playTapped:
@@ -78,7 +63,6 @@ struct PlaybackFeature {
                 let url = state.recording.url
                 
                 return .merge(
-                    // 재생 시작 및 완료 감지
                     .run { send in
                         do {
                             await playerClient.stop()
@@ -97,7 +81,6 @@ struct PlaybackFeature {
                     }
                     .cancellable(id: PlaybackCancelID.playback, cancelInFlight: true),
                     
-                    // 상태 업데이트 구독
                     .run { send in
                         for await playbackState in playerClient.stateStream() {
                             await send(.playbackStateUpdated(playbackState))
@@ -157,7 +140,6 @@ struct PlaybackFeature {
                 )
                 
             case .dismissTapped:
-                // Cleanup before dismiss
                 return .merge(
                     .cancel(id: PlaybackCancelID.playback),
                     .cancel(id: PlaybackCancelID.stateUpdates),

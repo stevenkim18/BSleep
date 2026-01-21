@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 타임라인 데이터 영역 (가로 스크롤 내부)
 struct TimelineContentView: View {
     let config: TimelineConfig
     let dates: [Date]

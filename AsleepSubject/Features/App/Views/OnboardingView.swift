@@ -18,7 +18,6 @@ struct OnboardingView: View {
             VStack(spacing: 40) {
                 Spacer()
                 
-                // 마이크 아이콘
                 ZStack {
                     Circle()
                         .fill(AppColors.primaryAccent.opacity(0.2))
@@ -33,7 +32,6 @@ struct OnboardingView: View {
                         .foregroundStyle(AppColors.primaryAccent)
                 }
                 
-                // 설명 텍스트
                 VStack(spacing: 12) {
                     Text("마이크 권한이 필요해요")
                         .font(.title2)
@@ -49,7 +47,6 @@ struct OnboardingView: View {
                 
                 Spacer()
                 
-                // 권한 허용 버튼
                 Button {
                     onRequestPermission()
                 } label: {

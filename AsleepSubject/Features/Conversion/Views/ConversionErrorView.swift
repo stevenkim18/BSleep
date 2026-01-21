@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 변환 실패 화면
 struct ConversionErrorView: View {
     let message: String
     let onRecovery: () -> Void
@@ -18,7 +17,6 @@ struct ConversionErrorView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            // 에러 아이콘
             ZStack {
                 Circle()
                     .fill(Color.orange.opacity(0.2))
@@ -29,7 +27,6 @@ struct ConversionErrorView: View {
                     .foregroundStyle(.orange)
             }
             
-            // 에러 메시지
             VStack(spacing: 12) {
                 Text("변환 실패")
                     .font(.title2.bold())
@@ -44,9 +41,7 @@ struct ConversionErrorView: View {
             
             Spacer()
             
-            // 버튼들
             VStack(spacing: 12) {
-                // 파일 복구 버튼 (Primary)
                 Button(action: onRecovery) {
                     Label("파일 복구", systemImage: "wrench.and.screwdriver")
                         .font(.headline)
@@ -57,7 +52,6 @@ struct ConversionErrorView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 
-                // 다시 시도 버튼
                 Button(action: onRetry) {
                     Label("다시 시도", systemImage: "arrow.clockwise")
                         .font(.headline)
@@ -68,7 +62,6 @@ struct ConversionErrorView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 
-                // 닫기 버튼
                 Button(action: onClose) {
                     Text("닫기")
                         .font(.headline)

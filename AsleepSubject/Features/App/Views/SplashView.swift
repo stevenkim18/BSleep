@@ -14,7 +14,6 @@ struct SplashView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
-                // 앱 아이콘/로고
                 ZStack {
                     Circle()
                         .fill(AppColors.primaryAccent.opacity(0.15))
@@ -29,7 +28,6 @@ struct SplashView: View {
                         .foregroundStyle(AppColors.primaryAccent)
                 }
                 
-                // 앱 이름
                 Text("Bsleep")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -42,7 +40,6 @@ struct SplashView: View {
                 Spacer()
                     .frame(height: 40)
                 
-                // 로딩 인디케이터
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
                     .scaleEffect(1.2)

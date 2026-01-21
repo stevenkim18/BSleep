@@ -6,18 +6,15 @@
 //
 import SwiftUI
 
-/// 녹음 파일 목록의 각 행을 표시하는 컴포넌트
 struct RecordingRow: View {
     let recording: Recording
     let isPlaying: Bool
     let onTap: () -> Void
     
-    /// WAV 파일 여부
     private var isWav: Bool {
         recording.format == .wav
     }
     
-    /// 아이콘 색상
     private var iconColor: Color {
         isWav ? .orange : AppColors.primaryAccent
     }
@@ -25,7 +22,6 @@ struct RecordingRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
-                // 아이콘 (WAV: 경고, M4A: 재생)
                 ZStack {
                     Circle()
                         .fill(iconColor.opacity(0.2))
@@ -34,10 +30,9 @@ struct RecordingRow: View {
                     Image(systemName: isWav ? "exclamationmark.triangle.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(iconColor)
-                        .offset(x: isWav ? 0 : 2) // play 아이콘만 시각적 중심 보정
+                        .offset(x: isWav ? 0 : 2)
                 }
                 
-                // 파일 정보
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(recording.fileName)
@@ -45,7 +40,6 @@ struct RecordingRow: View {
                             .foregroundStyle(.white)
                             .lineLimit(1)
                         
-                        // WAV 배지
                         if isWav {
                             Text("변환 필요")
                                 .font(.caption2.bold())
@@ -67,7 +61,6 @@ struct RecordingRow: View {
                 
                 Spacer()
                 
-                // 재생 시간 + 파일 용량 (세로 배치)
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(recording.formattedDuration)
                         .font(.caption.monospacedDigit())
@@ -78,7 +71,6 @@ struct RecordingRow: View {
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 
-                // 화살표
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.3))
@@ -112,7 +104,7 @@ struct RecordingRow: View {
                 recording: Recording(
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/recording_20260119_233015.m4a"),
-                    startedAt: Date().addingTimeInterval(-3600), // 1시간
+                    startedAt: Date().addingTimeInterval(-3600),
                     endedAt: Date(),
                     format: .m4a
                 ),
@@ -135,7 +127,7 @@ struct RecordingRow: View {
                 recording: Recording(
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/recording_20260118_220000.m4a"),
-                    startedAt: Date().addingTimeInterval(-10 * 3600), // 10시간 전
+                    startedAt: Date().addingTimeInterval(-10 * 3600),
                     endedAt: Date(),
                     format: .m4a
                 ),
@@ -158,7 +150,7 @@ struct RecordingRow: View {
                 recording: Recording(
                     id: UUID(),
                     url: URL(fileURLWithPath: "/recordings/short_nap.m4a"),
-                    startedAt: Date().addingTimeInterval(-30 * 60), // 30분 전
+                    startedAt: Date().addingTimeInterval(-30 * 60),
                     endedAt: Date(),
                     format: .m4a
                 ),
@@ -178,7 +170,6 @@ struct RecordingRow: View {
         
         ScrollView {
             VStack(spacing: 0) {
-                // 7시간 수면
                 RecordingRow(
                     recording: Recording(
                         id: UUID(),
@@ -192,7 +183,6 @@ struct RecordingRow: View {
                     print("Tapped")
                 }
                 
-                // 5시간 수면
                 RecordingRow(
                     recording: Recording(
                         id: UUID(),
@@ -206,7 +196,6 @@ struct RecordingRow: View {
                     print("Tapped")
                 }
                 
-                // 30분 낮잠
                 RecordingRow(
                     recording: Recording(
                         id: UUID(),

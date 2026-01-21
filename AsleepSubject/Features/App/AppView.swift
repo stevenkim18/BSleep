@@ -8,7 +8,6 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 앱 루트 뷰 (NavigationStack 컨테이너)
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
     @Environment(\.scenePhase) private var scenePhase
@@ -102,4 +101,3 @@ struct AppView: View {
     )
 }
 #endif
-

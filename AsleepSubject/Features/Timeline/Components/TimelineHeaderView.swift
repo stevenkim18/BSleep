@@ -7,9 +7,6 @@
 
 import SwiftUI
 
-/// 상단 시간 축 헤더 뷰
-/// - 2시간 간격으로 시간 레이블 표시 (설정 가능)
-/// - 각 레이블은 labelSpacing 너비 안에서 중앙 정렬
 struct TimelineHeaderView: View {
     let config: TimelineConfig
     

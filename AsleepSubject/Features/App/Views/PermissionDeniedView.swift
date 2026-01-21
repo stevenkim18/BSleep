@@ -18,7 +18,6 @@ struct PermissionDeniedView: View {
             VStack(spacing: 40) {
                 Spacer()
                 
-                // 경고 아이콘
                 ZStack {
                     Circle()
                         .fill(Color.red.opacity(0.2))
@@ -45,7 +44,6 @@ struct PermissionDeniedView: View {
                 Spacer()
                 
                 VStack(spacing: 12) {
-                    // 설정 이동 버튼
                     Button {
                         onOpenSettings()
                     } label: {

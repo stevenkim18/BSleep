@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 원형 진행률 표시 뷰
 struct CircularProgressView: View {
     let progress: CGFloat
     
@@ -15,14 +14,12 @@ struct CircularProgressView: View {
     
     var body: some View {
         ZStack {
-            // 배경 원
             Circle()
                 .stroke(
                     Color.white.opacity(0.1),
                     lineWidth: lineWidth
                 )
             
-            // 진행률 원
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
@@ -35,7 +32,6 @@ struct CircularProgressView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.easeInOut(duration: 0.2), value: progress)
             
-            // 중앙 아이콘
             Image(systemName: "waveform")
                 .font(.system(size: 40))
                 .foregroundStyle(AppColors.primaryAccent)

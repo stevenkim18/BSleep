@@ -13,28 +13,19 @@ struct TimelineFeature {
     
     @ObservableState
     struct State: Equatable {
-        // MARK: - 데이터
+        // MARK: - Data
         
-        /// 녹음 목록
         var recordings: [Recording] = []
-        
-        /// 로딩 상태
         var isLoading = false
-        
-        /// 에러 메시지
         var errorMessage: String?
-        
-        /// 재생 화면 (sheet)
         @Presents var playback: PlaybackFeature.State?
         
-        // MARK: - 설정
+        // MARK: - Config
         
-        /// 레이아웃 설정
         var config = TimelineConfig()
         
-        // MARK: - 계산된 값
+        // MARK: - Computed
         
-        /// 표시할 날짜 범위 (sleepDate 기준, 최신 → 과거 순)
         var dateRange: [Date] {
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
@@ -44,7 +35,6 @@ struct TimelineFeature {
             }
         }
         
-        /// 날짜별 녹음 그룹핑
         var recordingsByDate: [Date: [Recording]] {
             Dictionary(grouping: recordings, by: { $0.sleepDate })
         }

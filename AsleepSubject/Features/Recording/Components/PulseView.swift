@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 녹음 중 펄스 애니메이션을 표시하는 뷰
 struct PulseView: View {
     @State private var animate = false
     

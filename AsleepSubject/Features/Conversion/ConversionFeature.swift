@@ -22,26 +22,22 @@ struct ConversionFeature {
 
     @ObservableState
     struct State: Equatable {
-        /// WAV 파일 경로
         let sourceURL: URL
-        /// M4A 파일 경로
         let destinationURL: URL
         
-        /// 현재 진행 단계
         enum Phase: Equatable {
-            case converting(progress: Float)    // 변환 중
-            case conversionFailed(String)       // 변환 실패
-            case recovering                     // 복구 중
-            case recoveryCompleted              // 복구 성공 (사용자 확인 대기)
-            case recoveryFailed(String)         // 복구 실패
-            case completed                      // 완료
+            case converting(progress: Float)
+            case conversionFailed(String)
+            case recovering
+            case recoveryCompleted
+            case recoveryFailed(String)
+            case completed
         }
         
         var phase: Phase = .converting(progress: 0)
         
         // MARK: - Computed Properties
         
-        /// 변환 진행률 (Phase가 converting일 때만 의미 있음)
         var progress: Float {
             if case .converting(let progress) = phase {
                 return progress
@@ -49,7 +45,6 @@ struct ConversionFeature {
             return 0
         }
         
-        /// 에러 메시지 (변환/복구 실패 시)
         var errorMessage: String? {
             switch phase {
             case .conversionFailed(let message), .recoveryFailed(let message):
@@ -59,12 +54,10 @@ struct ConversionFeature {
             }
         }
         
-        /// 변환 완료 여부
         var isCompleted: Bool {
             phase == .completed
         }
         
-        /// 복구 실패 여부
         var isRecoveryFailed: Bool {
             if case .recoveryFailed = phase {
                 return true
@@ -74,32 +67,25 @@ struct ConversionFeature {
     }
     
     enum Action: Equatable {
-        // 변환 관련
         case startConversion
         case progressUpdated(Float)
         case conversionCompleted
         case conversionFailed(String)
         case retryTapped
-        
-        // 복구 관련
         case recoveryTapped
         case recoveryCompleted
         case recoveryFailed(String)
-        case continueConversionTapped   // 복구 성공 화면에서 변환 계속
-        
-        // UI 액션
-        case confirmTapped          // 완료 화면에서 확인
-        case closeTapped            // 에러 화면에서 닫기
-        case deleteTapped           // 복구 실패 시 삭제
-        
-        // Delegate
+        case continueConversionTapped
+        case confirmTapped
+        case closeTapped
+        case deleteTapped
         case delegate(Delegate)
         
         @CasePathable
         enum Delegate: Equatable {
-            case conversionCompleted(URL)   // 변환 완료 (M4A URL)
-            case fileDeleted                // 파일 삭제됨
-            case dismissed                  // 취소됨
+            case conversionCompleted(URL)
+            case fileDeleted
+            case dismissed
         }
     }
     
@@ -128,7 +114,6 @@ struct ConversionFeature {
                             }
                         }
                         
-                        // 파일 존재 여부로 성공/실패 판단
                         if dest.fileExists {
                             source.removeFileIfExists()
                             await send(.conversionCompleted)
@@ -179,12 +164,10 @@ struct ConversionFeature {
                 .cancellable(id: ConversionCancelID.recovery, cancelInFlight: true)
                 
             case .recoveryCompleted:
-                // 복구 성공 → 사용자에게 확인 화면 표시
                 state.phase = .recoveryCompleted
                 return .none
                 
             case .continueConversionTapped:
-                // 복구 성공 화면에서 변환 계속 버튼 탭
                 return .send(.startConversion)
                 
             case .recoveryFailed(let message):
@@ -200,7 +183,6 @@ struct ConversionFeature {
                 return .send(.delegate(.dismissed))
                 
             case .deleteTapped:
-                // 파일 삭제
                 return .run { [source = state.sourceURL] send in
                     source.removeFileIfExists()
                     await send(.delegate(.fileDeleted))
@@ -214,12 +196,10 @@ struct ConversionFeature {
 
     // MARK: - Constants
     
-    /// 로딩 화면 최소 표시 시간
     private static let minimumLoadingDuration: TimeInterval = 1.5
     
     // MARK: - Helper
     
-    /// 최소 시간을 보장하면서 작업 수행
     private static func withMinimumDuration<T>(
         _ duration: TimeInterval = minimumLoadingDuration,
         operation: @escaping () async throws -> T

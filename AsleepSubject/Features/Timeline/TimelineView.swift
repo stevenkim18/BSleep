@@ -8,23 +8,16 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 타임라인 메인 뷰
-/// - 왼쪽 날짜 컬럼: 고정
-/// - 오른쪽 데이터 영역: 가로 스크롤
-/// - 상단 시간 헤더: 가로 스크롤과 동기화
 struct TimelineView: View {
     @Bindable var store: StoreOf<TimelineFeature>
     
-    /// 가로 스크롤 오프셋 (헤더 동기화용)
     @State private var horizontalScrollOffset: CGFloat = 0
     
     var body: some View {
         ZStack {
-            // 다크 배경 그라데이션
             AppColors.backgroundGradient
                 .ignoresSafeArea()
             
-            // 콘텐츠
             if store.isLoading {
                 ProgressView()
                     .tint(.white)
@@ -53,32 +46,25 @@ struct TimelineView: View {
     
     private var timelineContent: some View {
         VStack(spacing: 0) {
-            // 상단: 시간 헤더
             headerRow
             
-            // 구분선
             Rectangle()
                 .fill(AppColors.timelineGridLine)
                 .frame(height: 0.5)
             
-            // 본문: 세로 스크롤
             bodyContent
         }
     }
     
-    /// 상단 헤더 행 (빈 공간 + 시간 헤더)
     private var headerRow: some View {
         HStack(spacing: 0) {
-            // 빈 공간 (날짜 컬럼 위치)
             Color.clear
                 .frame(width: store.config.dateColumnWidth, height: store.config.headerHeight)
             
-            // 구분선
             Rectangle()
                 .fill(AppColors.timelineGridLine)
                 .frame(width: 0.5, height: store.config.headerHeight)
             
-            // 시간 헤더 (가로 스크롤 동기화)
             GeometryReader { _ in
                 TimelineHeaderView(config: store.config)
                     .offset(x: -horizontalScrollOffset)
@@ -88,22 +74,18 @@ struct TimelineView: View {
         }
     }
     
-    /// 본문 영역 (날짜 컬럼 + 데이터 영역)
     private var bodyContent: some View {
         ScrollView(.vertical, showsIndicators: true) {
             HStack(alignment: .top, spacing: 0) {
-                // 날짜 컬럼 (고정)
                 TimelineDateColumnView(
                     config: store.config,
                     dates: store.dateRange
                 )
                 
-                // 구분선
                 Rectangle()
                     .fill(AppColors.timelineGridLine)
                     .frame(width: 0.5)
                 
-                // 데이터 영역 (가로 스크롤)
                 ScrollView(.horizontal, showsIndicators: false) {
                     TimelineContentView(
                         config: store.config,

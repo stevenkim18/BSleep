@@ -10,34 +10,22 @@ import Dependencies
 
 // MARK: - Interruption Event
 
-/// 오디오 세션 인터럽션 이벤트
 enum RecorderInterruptionEvent: Equatable, Sendable {
-    /// 인터럽션 시작 (전화, Siri 등)
     case began
-    /// 인터럽션 종료
     case ended
 }
 
 // MARK: - Protocol
 
-/// 녹음 전용 프로토콜
 protocol RecorderClientProtocol: Sendable {
-    /// 녹음 시작
     func startRecording(to url: URL) async throws
-    
-    /// 녹음 중지 및 파일 URL 반환
     func stopRecording() async -> URL?
-    
-    /// 현재 녹음 중인지 확인
     var isRecording: Bool { get async }
-    
-    /// 인터럽션 이벤트 스트림
     func interruptionEventStream() -> AsyncStream<RecorderInterruptionEvent>
 }
 
 // MARK: - Live Implementation
 
-/// RecorderClientProtocol의 실제 구현체
 actor LiveRecorderClient: RecorderClientProtocol {
     
     private var recorder: AVAudioRecorder?
@@ -73,15 +61,12 @@ actor LiveRecorderClient: RecorderClientProtocol {
     // MARK: - Recording
     
     func startRecording(to url: URL) async throws {
-        // 오디오 세션 설정
         try await MainActor.run {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .default, options: .defaultToSpeaker)
             try session.setActive(true)
         }
         
-        // 녹음 설정 (WAV - LinearPCM)
-        // WAV 형식은 finalize 없이도 복구 가능하여 앱 비정상 종료 시에도 데이터 보존 가능
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: AudioSettings.sampleRate,
@@ -91,7 +76,6 @@ actor LiveRecorderClient: RecorderClientProtocol {
             AVLinearPCMIsBigEndianKey: false
         ]
         
-        // 레코더 생성 및 시작
         let newRecorder = try AVAudioRecorder(url: url, settings: settings)
         newRecorder.record()
         
@@ -170,4 +154,3 @@ extension DependencyValues {
         set { self[RecorderClientKey.self] = newValue }
     }
 }
-

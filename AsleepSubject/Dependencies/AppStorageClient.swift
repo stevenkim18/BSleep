@@ -11,7 +11,6 @@ import ComposableArchitecture
 // MARK: - Protocol
 
 protocol AppStorageClientProtocol: Sendable {
-    /// 가용 저장 공간 (바이트 단위)
     func availableCapacity() async throws -> Int64
 }
 

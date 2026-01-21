@@ -10,39 +10,20 @@ import Dependencies
 
 // MARK: - Protocol
 
-/// 재생 전용 프로토콜
 protocol PlayerClientProtocol: Sendable {
-    /// 재생 시작
     func play(url: URL) async throws
-    
-    /// 일시 정지
     func pause() async
-    
-    /// 다시 재생 (일시 정지 후)
     func resume() async
-    
-    /// 정지 (리소스 해제)
     func stop() async
-    
-    /// 특정 위치로 이동
     func seek(to time: TimeInterval) async
-    
-    /// 현재 재생 상태 조회
     func currentState() async -> PlaybackState?
-    
-    /// 재생 상태 업데이트 스트림 (주기적 업데이트)
     func stateStream() -> AsyncStream<PlaybackState>
-    
-    /// 재생 완료 이벤트 스트림
     func eventStream() -> AsyncStream<PlaybackEvent>
-    
-    /// 현재 재생 중인지 확인
     var isPlaying: Bool { get async }
 }
 
 // MARK: - Live Implementation
 
-/// PlayerClientProtocol의 실제 구현체
 actor LivePlayerClient: PlayerClientProtocol {
     
     private var player: AVAudioPlayer?
@@ -66,7 +47,6 @@ actor LivePlayerClient: PlayerClientProtocol {
     // MARK: - Playback
     
     func play(url: URL) async throws {
-        // 기존 재생 정지
         await stop()
         
         try await MainActor.run {
@@ -75,7 +55,6 @@ actor LivePlayerClient: PlayerClientProtocol {
             try session.setActive(true)
         }
         
-        // Delegate 생성
         let delegate = PlayerDelegate { [weak self] in
             Task {
                 await self?.handleFinished()
@@ -89,7 +68,6 @@ actor LivePlayerClient: PlayerClientProtocol {
         self.player = newPlayer
         self.delegate = delegate
         
-        // 상태 업데이트 시작
         startStateUpdates()
     }
     

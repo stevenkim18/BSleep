@@ -8,17 +8,14 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 오디오 변환 진행 상태를 보여주는 전체 화면 View
 struct ConversionView: View {
     @Bindable var store: StoreOf<ConversionFeature>
     
     var body: some View {
         ZStack {
-            // 배경
             AppColors.backgroundGradient
                 .ignoresSafeArea()
             
-            // Phase에 따른 UI
             switch store.phase {
             case .converting(let progress):
                 ConvertingLoadingView(progress: progress)

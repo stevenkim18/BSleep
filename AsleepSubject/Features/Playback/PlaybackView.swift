@@ -8,23 +8,15 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 반모달 재생 화면
 struct PlaybackView: View {
     @Bindable var store: StoreOf<PlaybackFeature>
     
     var body: some View {
         VStack(spacing: 0) {
-            // 드래그 핸들
             dragHandle
-            
-            // 헤더 (녹음 정보)
             headerSection
-            
             Spacer()
-            
-            // 재생 컨트롤
             controlSection
-            
             Spacer()
         }
         .padding()
@@ -45,7 +37,7 @@ struct PlaybackView: View {
         Capsule()
             .fill(Color.white.opacity(0.2))
             .frame(width: 36, height: 5)
-            .padding(.top, 20) // 상단 여백 추가
+            .padding(.top, 20)
             .padding(.bottom, 16)
     }
     
@@ -53,7 +45,6 @@ struct PlaybackView: View {
     
     private var headerSection: some View {
         VStack(spacing: 20) {
-            // 아이콘
             ZStack {
                 Circle()
                     .fill(AppColors.primaryAccent.opacity(0.1))
@@ -65,15 +56,12 @@ struct PlaybackView: View {
                     .symbolEffect(.variableColor.iterative, isActive: store.isPlaying && !store.isPaused)
             }
             
-            // 파일 정보
             VStack(spacing: 8) {
-                // 파일 제목 (타이틀로 변경)
                 Text(store.recording.fileName)
                     .font(.title3.bold())
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 
-                // 날짜 (서브타이틀로 변경)
                 Text(store.recording.formattedDate)
                     .font(.body)
                     .foregroundStyle(.white.opacity(0.6))
@@ -86,7 +74,6 @@ struct PlaybackView: View {
     
     private var controlSection: some View {
         VStack(spacing: 32) {
-            // SeekBar
             if let playbackState = store.playbackState {
                 SeekBar(
                     currentTime: playbackState.currentTime,
@@ -105,9 +92,7 @@ struct PlaybackView: View {
                 .disabled(true)
             }
             
-            // 컨트롤 버튼
             HStack(spacing: 40) {
-                // 정지 버튼
                 Button {
                     store.send(.stopTapped)
                 } label: {
@@ -121,7 +106,6 @@ struct PlaybackView: View {
                 .disabled(!store.isPlaying && !store.isPaused)
                 .opacity((!store.isPlaying && !store.isPaused) ? 0.5 : 1)
                 
-                // 재생/일시정지 버튼
                 Button {
                     if store.isPaused {
                         store.send(.resumeTapped)
@@ -135,12 +119,11 @@ struct PlaybackView: View {
                         .font(.largeTitle)
                         .foregroundStyle(.white)
                         .frame(width: 80, height: 80)
-                        .background(AppColors.primaryAccent) // Primary Accent 사용
+                        .background(AppColors.primaryAccent)
                         .clipShape(Circle())
                         .shadow(color: AppColors.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 4)
                 }
                 
-                // 닫기 버튼
                 Button {
                     store.send(.dismissTapped)
                 } label: {

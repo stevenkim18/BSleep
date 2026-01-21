@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 변환 완료 화면
 struct ConversionCompletedView: View {
     let onConfirm: () -> Void
     
@@ -15,7 +14,6 @@ struct ConversionCompletedView: View {
         VStack(spacing: 40) {
             Spacer()
             
-            // 완료 아이콘
             ZStack {
                 Circle()
                     .fill(Color.green.opacity(0.2))
@@ -26,7 +24,6 @@ struct ConversionCompletedView: View {
                     .foregroundStyle(.green)
             }
             
-            // 텍스트
             VStack(spacing: 12) {
                 Text("변환 완료!")
                     .font(.title2.bold())
@@ -39,7 +36,6 @@ struct ConversionCompletedView: View {
             
             Spacer()
             
-            // 확인 버튼
             Button(action: onConfirm) {
                 Text("확인")
                     .font(.headline)

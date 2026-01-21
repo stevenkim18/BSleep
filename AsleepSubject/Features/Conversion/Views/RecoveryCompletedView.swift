@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 복구 성공 화면
 struct RecoveryCompletedView: View {
     let onContinue: () -> Void
     
@@ -15,7 +14,6 @@ struct RecoveryCompletedView: View {
         VStack(spacing: 40) {
             Spacer()
             
-            // 성공 아이콘
             ZStack {
                 Circle()
                     .fill(Color.blue.opacity(0.2))
@@ -26,7 +24,6 @@ struct RecoveryCompletedView: View {
                     .foregroundStyle(.blue)
             }
             
-            // 텍스트
             VStack(spacing: 12) {
                 Text("파일 복구 완료!")
                     .font(.title2.bold())
@@ -40,7 +37,6 @@ struct RecoveryCompletedView: View {
             
             Spacer()
             
-            // 변환 계속 버튼
             Button(action: onContinue) {
                 Label("변환 시작", systemImage: "arrow.right.circle.fill")
                     .font(.headline)

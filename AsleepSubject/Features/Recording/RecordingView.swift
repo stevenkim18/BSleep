@@ -8,21 +8,17 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 전체화면 녹음 메인 화면
 struct RecordingView: View {
     @Bindable var store: StoreOf<RecordingFeature>
     
-    /// 네비게이션 콜백
     var onNavigateToList: (() -> Void)?
     var onNavigateToTimeline: (() -> Void)?
     
     var body: some View {
         ZStack {
-            // 배경
             AppColors.backgroundGradient
                 .ignoresSafeArea()
             
-            // 녹음 중일 때 은은한 붉은 빛 배경 효과
             if store.isRecording {
                 RadialGradient(
                     colors: [Color.red.opacity(0.15), Color.clear],
@@ -35,19 +31,16 @@ struct RecordingView: View {
             }
             
             VStack(spacing: 0) {
-                // 상단 네비게이션 버튼
                 navigationButtons
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                 
                 Spacer()
                 
-                // 중앙: 녹음 상태 표시
                 recordingStatusView
                 
                 Spacer()
                 
-                // 하단: 녹음 버튼
                 recordButton
                     .padding(.bottom, 60)
             }
@@ -96,7 +89,6 @@ struct RecordingView: View {
     
     private var navigationButtons: some View {
         HStack(spacing: 16) {
-            // 목록 버튼
             Button {
                 onNavigateToList?()
             } label: {
@@ -115,7 +107,6 @@ struct RecordingView: View {
             .disabled(store.isRecording)
             .opacity(store.isRecording ? 0.3 : 1)
             
-            // 타임라인 버튼
             Button {
                 onNavigateToTimeline?()
             } label: {
@@ -142,9 +133,7 @@ struct RecordingView: View {
     
     private var recordingStatusView: some View {
         VStack(spacing: 32) {
-            // 상태 아이콘
             ZStack {
-                // 외부 링
                 Circle()
                     .stroke(
                         store.isInterrupted ? Color.orange.opacity(0.3) :
@@ -154,22 +143,18 @@ struct RecordingView: View {
                     )
                     .frame(width: 200, height: 200)
                 
-                // 펄스 애니메이션 (녹음 중, 인터럽트 시 멈춤)
                 if store.isRecording && !store.isInterrupted {
                     PulseView()
                 } else if store.isInterrupted {
-                    // 인터럽트 상태일 때 오렌지 원
                     Circle()
                         .fill(Color.orange.opacity(0.1))
                         .frame(width: 180, height: 180)
                 } else {
-                    // 대기 상태일 때 은은한 숨쉬기 효과
                     Circle()
                         .fill(AppColors.primaryAccent.opacity(0.05))
                         .frame(width: 180, height: 180)
                 }
                 
-                // 중앙 아이콘
                 Image(systemName: store.isInterrupted ? "pause.fill" :
                       store.isRecording ? "waveform" : "mic.fill")
                     .font(.system(size: 64))
@@ -184,7 +169,6 @@ struct RecordingView: View {
                                     AppColors.primaryAccent).opacity(0.5), radius: 20)
             }
             
-            // 상태 텍스트
             VStack(spacing: 12) {
                 if store.isInterrupted {
                     Text("인터럽션 발생")
@@ -199,13 +183,11 @@ struct RecordingView: View {
                         .font(.title2.bold())
                         .foregroundStyle(.red)
                     
-                    // 녹음 시간
                     Text(store.recordingDuration.formattedAsDuration)
                         .font(.system(size: 64, weight: .thin, design: .monospaced))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                     
-                    // 경고 문구
                     Text("녹음 중에는 앱을 종료하지 마세요")
                         .font(.callout)
                         .foregroundStyle(.white.opacity(0.6))
@@ -230,7 +212,6 @@ struct RecordingView: View {
             store.send(.recordButtonTapped)
         } label: {
             ZStack {
-                // 외부 원 (블러 효과 포함)
                 Circle()
                     .fill(.ultraThinMaterial)
                     .frame(width: 100, height: 100)
@@ -239,15 +220,12 @@ struct RecordingView: View {
                             .stroke(Color.white.opacity(0.1), lineWidth: 1)
                     )
                 
-                // 버튼 내부
                 if store.isRecording {
-                    // 정지 버튼 (사각형)
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.red.gradient)
                         .frame(width: 36, height: 36)
                         .shadow(color: .red.opacity(0.4), radius: 8)
                 } else {
-                    // 녹음 버튼 (원)
                     Circle()
                         .fill(Color.red.gradient)
                         .frame(width: 80, height: 80)
