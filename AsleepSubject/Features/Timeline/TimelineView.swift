@@ -34,7 +34,7 @@ struct TimelineView: View {
                 timelineContent
             }
         }
-        .navigationTitle("수면 기록")
+        .navigationTitle("타임 라인")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppColors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)

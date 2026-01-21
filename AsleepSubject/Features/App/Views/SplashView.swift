@@ -38,6 +38,15 @@ struct SplashView: View {
                 Text("당신의 수면을 분석하세요.")
                     .font(.subheadline)
                     .foregroundStyle(AppColors.textSecondary)
+                
+                Spacer()
+                    .frame(height: 40)
+                
+                // 로딩 인디케이터
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
+                    .scaleEffect(1.2)
+                    .padding(.bottom, 40)
             }
         }
     }
