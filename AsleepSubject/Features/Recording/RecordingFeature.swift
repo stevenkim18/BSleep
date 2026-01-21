@@ -300,10 +300,7 @@ struct RecordingFeature {
     // MARK: - Helpers
     
     private func makeRecordingURL() throws -> URL {
-        guard let documentsPath = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)
-            .first
-        else {
+        guard let documentsPath = URL.documentsDirectory else {
             throw NSError(domain: "Recording", code: 1, userInfo: [NSLocalizedDescriptionKey: "Documents directory not found"])
         }
         let timestamp = Int(Date().timeIntervalSince1970)

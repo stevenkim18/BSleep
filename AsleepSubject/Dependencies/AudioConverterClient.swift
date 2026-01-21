@@ -62,9 +62,7 @@ actor LiveAudioConverterClient: AudioConverterClientProtocol {
         }
         
         // 기존 파일이 있으면 삭제
-        if FileManager.default.fileExists(atPath: destinationURL.path) {
-            try? FileManager.default.removeItem(at: destinationURL)
-        }
+        destinationURL.removeFileIfExists()
         
         exportSession.outputURL = destinationURL
         exportSession.outputFileType = .m4a

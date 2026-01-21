@@ -73,16 +73,13 @@ actor LiveWavRecoveryClient: WavRecoveryClientProtocol {
     private var bitsPerSample: UInt16 { UInt16(AudioSettings.bitsPerSample) }
     
     func recover(fileURL: URL) async throws -> Bool {
-        let fileManager = FileManager.default
-        
         // 1. 파일 존재 확인
-        guard fileManager.fileExists(atPath: fileURL.path) else {
+        guard fileURL.fileExists else {
             throw WavRecoveryError.fileNotFound
         }
         
         // 2. 파일 크기 확인 (최소 헤더 크기보다 커야 함)
-        let attrs = try fileManager.attributesOfItem(atPath: fileURL.path)
-        guard let fileSize = attrs[.size] as? UInt64,
+        guard let fileSize = fileURL.fileSize,
               fileSize > UInt64(headerSize) else {
             throw WavRecoveryError.fileTooSmall
         }
@@ -174,9 +171,7 @@ extension DependencyValues {
 extension LiveWavRecoveryClient {
     /// 테스트용 빈 WAV 파일 생성 (헤더만 있어서 복구 실패함)
     func createEmptyWavForTesting() async throws -> URL {
-        guard let documentsURL = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)
-            .first else {
+        guard let documentsURL = URL.documentsDirectory else {
             throw WavRecoveryError.writeFailed
         }
         
@@ -194,9 +189,7 @@ extension LiveWavRecoveryClient {
     
     /// 테스트용 불완전 WAV 파일 생성 (헤더는 0이지만 데이터는 있음)
     func createIncompleteWavForTesting() async throws -> URL {
-        guard let documentsURL = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)
-            .first else {
+        guard let documentsURL = URL.documentsDirectory else {
             throw WavRecoveryError.writeFailed
         }
         

@@ -129,8 +129,8 @@ struct ConversionFeature {
                         }
                         
                         // 파일 존재 여부로 성공/실패 판단
-                        if FileManager.default.fileExists(atPath: dest.path) {
-                            try? FileManager.default.removeItem(at: source)
+                        if dest.fileExists {
+                            source.removeFileIfExists()
                             await send(.conversionCompleted)
                         } else {
                             await send(.conversionFailed("변환된 파일을 찾을 수 없습니다."))
@@ -202,7 +202,7 @@ struct ConversionFeature {
             case .deleteTapped:
                 // 파일 삭제
                 return .run { [source = state.sourceURL] send in
-                    try? FileManager.default.removeItem(at: source)
+                    source.removeFileIfExists()
                     await send(.delegate(.fileDeleted))
                 }
                 

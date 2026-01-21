@@ -28,9 +28,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
     private let fileManager = FileManager.default
     
     func fetchRecordings() async throws -> [Recording] {
-        guard let documentsURL = fileManager
-            .urls(for: .documentDirectory, in: .userDomainMask)
-            .first else {
+        guard let documentsURL = URL.documentsDirectory else {
             return []
         }
         
@@ -45,8 +43,7 @@ actor LiveRecordingStorageClient: RecordingStorageClientProtocol {
         var recordings: [Recording] = []
         
         for url in files {
-            guard let attrs = try? fileManager.attributesOfItem(atPath: url.path),
-                  let createdAt = attrs[.creationDate] as? Date else {
+            guard let createdAt = url.fileCreationDate else {
                 continue
             }
             

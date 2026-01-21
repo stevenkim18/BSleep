@@ -177,21 +177,19 @@ struct RecordingListFeature {
                     }
                     #endif
                     
-                    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+                    guard sourceURL.fileExists else {
                         print("❌ big.wav not found at: \(sourceURL.path)")
                         return
                     }
                     
-                    guard let documentsURL = FileManager.default
-                        .urls(for: .documentDirectory, in: .userDomainMask)
-                        .first else {
+                    guard let documentsURL = URL.documentsDirectory else {
                         return
                     }
                     
                     let destURL = documentsURL.appendingPathComponent("big_\(Date().timeIntervalSince1970).wav")
                     
                     do {
-                        try FileManager.default.copyItem(at: sourceURL, to: destURL)
+                        try sourceURL.copyFile(to: destURL)
                         print("✅ Copied big.wav to: \(destURL.path)")
                     } catch {
                         print("❌ Copy failed: \(error)")

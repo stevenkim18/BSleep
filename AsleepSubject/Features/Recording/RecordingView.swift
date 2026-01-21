@@ -52,7 +52,7 @@ struct RecordingView: View {
                     .padding(.bottom, 60)
             }
         }
-        .preferredColorScheme(.dark) // 강제 다크 모드
+        .preferredColorScheme(.dark)
         .fullScreenCover(
             item: $store.scope(state: \.destination?.conversion, action: \.destination.conversion)
         ) { conversionStore in

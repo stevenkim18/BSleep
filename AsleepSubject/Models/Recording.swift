@@ -74,9 +74,8 @@ struct Recording: Equatable, Identifiable {
     
     /// 파일 크기 (바이트)
     var fileSize: Int64? {
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        return attributes?[.size] as? Int64
+        guard url.fileExists else { return nil }
+        return url.fileSize.map { Int64($0) }
     }
     
     /// 포맷된 파일 크기 문자열 (예: "12.5 MB")
